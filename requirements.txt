@@ -11,3 +11,5 @@ xgboost
 catboost
 shap
 streamlit
+geonamescache
+pycountry

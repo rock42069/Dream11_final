@@ -645,7 +645,6 @@ def rename_date():
     df = pd.read_csv(total_data_path, index_col= False)
     # split date column and take first element by " - "
     df['date'] = df['date'].str.split(" - ").str[0]
-    #rename date column
     df.rename(columns={'date': 'start_date'}, inplace=True)
     os.remove(total_data_path)
     df.to_csv(total_data_path)
@@ -769,8 +768,9 @@ def download_and_preprocess():
     adding_names()
 
 
-download_and_preprocess()
-# adding_names()
+
 # json_generator()
-# adding_names()
+# rename_date()
+# matchwise_data_generator()
 # aggregate()
+# adding_names()
