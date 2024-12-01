@@ -1,1 +1,4 @@
 .venv
+src/data
+.vscode
+catboost_info
