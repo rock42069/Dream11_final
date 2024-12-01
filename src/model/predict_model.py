@@ -63,18 +63,6 @@ def filter_by_date(df, start_date, end_date):
     
     return filtered_df
 
-def drop_zero_dominant_rows(df, threshold=0.9):
-    # Calculate the number of zeros in each row
-    zero_count = (df == 0).sum(axis=1)
-
-    # Calculate the threshold number of zeros allowed per row (2/3 of the columns)
-    threshold_zeros = int(threshold * df.shape[1])  # Number of zeros allowed
-
-    # Drop rows where the number of zeros exceeds the threshold
-    df_cleaned = df[zero_count <= threshold_zeros]
-
-    return df_cleaned
-
 def generate_predictions(train_start_date, train_end_date,test_start_date, test_end_date):
     train_start = train_start_date.replace('-', '_')
     train_end = train_end_date.replace('-', '_')

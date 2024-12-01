@@ -86,10 +86,10 @@ if st.session_state.setup_done:
             st.write(f"Download the final output below:")
 
             # File download button
-            # output_path = os.path.abspath(
-            #     os.path.join(os.path.dirname(__file__), "..", "src", "data", "processed", "final_output.csv")
-            # )
-            output_path = "/Users/trijalsrivastava/Code/Dream11_final/src/data/processed/final_output.csv"
+            output_path = os.path.abspath(
+                os.path.join(os.path.dirname(__file__), "src", "data", "processed", "final_output.csv")
+            )
+            # output_path = "/Users/trijalsrivastava/Code/Dream11_final/src/data/processed/final_output.csv"
             with open(output_path, "rb") as file:
                 st.download_button(
                     label="Download Final Output CSV",

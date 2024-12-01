@@ -187,7 +187,7 @@ def train_and_save_model(train_start_date, train_end_date):
     train_start = train_start_date.replace('-', '_')
     train_end = train_end_date.replace('-', '_')
 
-    output_model_path = os.path.abspath(os.path.join(current_dir, "..", "..","src", "model_artifacts", f"Model_UI_{train_start}-{train_end}.pkl"))
+    output_model_path = os.path.abspath(os.path.join(current_dir, "..", "..","src", "model_artifacts", f"Product_UI_f{train_start_date}.pkl"))
 
     columns = ['batting_average_n2', 'batting_average_n3', 'boundary_percentage_n3',
                 'centuries_cumsum', 'half_centuries_cumsum', 'economy_rate_n1',
@@ -213,3 +213,5 @@ def train_and_save_model(train_start_date, train_end_date):
     trained_models = train_models(X_train, y_train)
 
     pickle.dump(trained_models, open(output_model_path, 'wb'))
+
+train_and_save_model('2000-01-01', '2024-06-30')
