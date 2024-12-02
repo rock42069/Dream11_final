@@ -6,9 +6,9 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 # Define paths
 
 
-def process_matches():
+def process_matches(match_type):
 
-    pred_path = os.path.abspath(os.path.join(current_dir, ".." , "..","src", "data", "processed", "predictions_test.csv"))
+    pred_path = os.path.abspath(os.path.join(current_dir, ".." , "..","src", "data", "processed", f"predictions_{match_type}.csv"))
     data_path = os.path.abspath(os.path.join(current_dir, ".." , "..","src", "data", "interim", "mw_pw_profiles.csv"))
     df_pred = pd.read_csv(pred_path, index_col=False)
     df_data = pd.read_csv(data_path, index_col=False)
@@ -17,7 +17,7 @@ def process_matches():
     df_data['match_id'] = df_data['match_id'].astype(str)
 
     df_merged = df_pred.merge(df_data[['match_id', 'start_date', 'player_team', 'player_id', 'full_name']], on=['match_id', 'player_id'], how='left')
-    df_output = df_merged[['match_id', 'start_date', 'player_team', 'stacked_model_predicted_score', 'fantasy_score_total', 'player_id', 'full_name']]
+    df_output = df_merged[['match_id', 'start_date', 'player_team', 'predicted_score', 'fantasy_score_total', 'player_id', 'full_name']]
 
     result_list = []
 
@@ -28,16 +28,25 @@ def process_matches():
         Team_2 = match_df['player_team'].unique()[1]
 
         # Select top 11 players based on predicted score
-        top_predicted = match_df.sort_values(by="stacked_model_predicted_score", ascending=False).head(11)
+        def ensure_team_representation(df, team1, team2, score_column):
+            team1_players = df[df['player_team'] == team1].sort_values(by=score_column, ascending=False)
+            team2_players = df[df['player_team'] == team2].sort_values(by=score_column, ascending=False)
+            top_players = pd.concat([team1_players.head(1), team2_players.head(1)])
+            remaining_players = df[~df.index.isin(top_players.index)].sort_values(by=score_column, ascending=False)
+            top_players = pd.concat([top_players, remaining_players.head(9)])
+            return top_players.head(11)
+
+        # Select top 11 players based on predicted score
+        top_predicted = ensure_team_representation(match_df, Team_1, Team_2, "predicted_score")
         predicted_players = {
             f"Predicted Player {i+1}": top_predicted.iloc[i]["full_name"] for i in range(11)
         }
         predicted_scores = {
-            f"Predicted Player {i+1} Points": top_predicted.iloc[i]["stacked_model_predicted_score"] for i in range(11)
+            f"Predicted Player {i+1} Points": top_predicted.iloc[i]["predicted_score"] for i in range(11)
         }
 
         # Select top 11 players based on fantasy score
-        top_fantasy = match_df.sort_values(by="fantasy_score_total", ascending=False).head(11)
+        top_fantasy = ensure_team_representation(match_df, Team_1, Team_2, "fantasy_score_total")
         fantasy_players = {
             f"Dream team player {i+1}": top_fantasy.iloc[i]["full_name"] for i in range(11)
         }
@@ -68,7 +77,11 @@ def process_matches():
         result_list.append(result_df)
 
     final_result_df = pd.concat(result_list, ignore_index=True)
-    final_path = os.path.abspath(os.path.join(current_dir , ".." , ".." , "src","data" ,"processed" ,"final_output.csv"))
+    final_path = os.path.abspath(os.path.join(current_dir , ".." , ".." , "src","data" ,"processed" ,f"final_output_{match_type}.csv"))
     final_result_df.to_csv( final_path,index=False)
     return final_result_df
+
+process_matches("test")
+process_matches("t20")
+process_matches("odi")
 
