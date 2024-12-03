@@ -8,40 +8,32 @@ from tensorflow.keras.layers import Dense
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
 def predict_scores_c(trained_models, columns, X_test):
-    # Ensure columns of X_test align with X_train columns
     X_test = X_test[columns]
 
     test_data = pd.DataFrame()
 
-    # Loop through each model to predict scores
     for model_name, model_info in trained_models.items():
-        model = model_info['model']  # Extract the trained model
+        model = model_info['model']
         
-        # Predict probabilities or binary outcomes based on model's capabilities
         try:
-            # Predict probabilities if available, otherwise predict binary labels
             if hasattr(model, "predict_proba"):
-                pred_scores = model.predict_proba(X_test)[:, 1]  # Use probability for class 1
+                pred_scores = model.predict_proba(X_test)[:, 1]
             else:
-                pred_scores = model.predict(X_test)  # Use binary labels
+                pred_scores = model.predict(X_test)
         except Exception as e:
             print(f"Error predicting with {model_name}: {e}")
-            pred_scores = np.zeros(X_test.shape[0])  # Default to zero scores if prediction fails
+            pred_scores = np.zeros(X_test.shape[0])
 
-        # Store each model's predicted scores in the DataFrame
         test_data[model_name + '_predicted_score'] = pred_scores
 
     return test_data
 
 def predictions_per_match_c(trained_models,columns, X_test, test):
-    # Call predict_scores to get the predicted scores DataFrame
     predictions = predict_scores_c(trained_models, columns, X_test)
 
-    # Reset indices of test and predictions for alignment
     test_reset = test.reset_index(drop=True)
     predictions = predictions.reset_index(drop=True)
 
-    # Assign match_id, player_id, and fantasy_score_total from test to predictions DataFrame
     predictions['match_id'] = test_reset.get('match_id')
     predictions['player_id'] = test_reset.get('player_id')
     predictions['fantasy_score_total'] = test_reset.get('fantasy_score_total')
@@ -50,34 +42,28 @@ def predictions_per_match_c(trained_models,columns, X_test, test):
 
 
 def predict_scores_odi(trained_models, columns, X_test):
-    # Ensure columns of X_test align with X_train columns
     X_test = X_test[columns]
 
     test_data = pd.DataFrame()
 
-    # Loop through each model to predict scores
     for model_name, model_info in trained_models.items():
-        model = model_info['model']  # Extract the trained model
-        pred_scores = model.predict(X_test)  # Predict the scores
+        model = model_info['model']
+        pred_scores = model.predict(X_test)
 
-        # Store each model's predicted scores in the DataFrame
         test_data[model_name + '_predicted_score'] = pred_scores
 
     return test_data
 
 def predictions_per_match_odi(trained_models, columns, X_test, test):
-    # Call predict_scores to get the predicted scores DataFrame
     predictions = predict_scores_odi(trained_models, columns, X_test)
 
-    # Reset indices of test and predictions for alignment
     test_reset = test.reset_index(drop=True)
     predictions = predictions.reset_index(drop=True)
 
-    # Assign match_id and fantasy_score_total from test to predictions DataFrame
     predictions['match_id'] = test_reset.get('match_id')
     predictions['player_id']=test_reset.get('player_id')
     predictions['fantasy_score_total'] = test_reset.get('fantasy_score_total')
-    # predictions['match_type'] = test_reset.get('match_type')
+
 
     return predictions, test_reset
 
@@ -86,42 +72,29 @@ def preprocess_odi(X):
     return X
 
 def predict_scores_test(trained_model, X_test):
-    # Ensure columns of X_test align with X_train columns
-
     test_data = pd.DataFrame()
 
-    # Predict scores using the trained stacking model
-    pred_scores = trained_model.predict(X_test)  # Predict the scores
+    pred_scores = trained_model.predict(X_test)
 
-    # Store the predicted scores in the DataFrame
     test_data['predicted_score'] = pred_scores
 
     return test_data
 
 def predictions_per_match_test(trained_models, X_test, test):
-    # Call predict_scores to get the predicted scores DataFrame
     predictions = predict_scores_test(trained_models, X_test)
-
-    # Reset indices of test and predictions for alignment
     test_reset = test.reset_index(drop=True)
     predictions = predictions.reset_index(drop=True)
 
-    # Assign match_id and fantasy_score_total from test to predictions DataFrame
     predictions['match_id'] = test_reset.get('match_id')
     predictions['player_id']=test_reset.get('player_id')
     predictions['fantasy_score_total'] = test_reset.get('fantasy_score_total')
-    # predictions['match_type'] = test_reset.get('match_type')
-
 
     return predictions
 
 def filter_by_date(df, start_date, end_date):
-    # Convert the 'start_date' column to datetime format
     df['start_date'] = pd.to_datetime(df['start_date'])
-    
-    # Filter the dataframe based on the date range
     filtered_df = df[(df['start_date'] >= start_date) & (df['start_date'] <= end_date)]
-    
+
     return filtered_df
 
 def one_hot_encode_t20(X, column_name):
@@ -129,11 +102,9 @@ def one_hot_encode_t20(X, column_name):
 
     one_hot_dict = {}
 
-    # Create a binary column for each unique value
     for unique_value in unique_values:
         one_hot_dict[f"{column_name}_{unique_value}"] = (X[column_name] == unique_value).astype(int)
 
-    # Remove the original column and add new one-hot encoded columns
     X = X.drop(columns=[column_name])
     for col_name, col_data in one_hot_dict.items():
         X[col_name] = col_data
@@ -141,13 +112,7 @@ def one_hot_encode_t20(X, column_name):
     return X
 
 def preprocess_t20(X):
-    #X= one_hot_encode(X,'match_type')
-    # X= one_hot_encode(X,'playing_role')
-    # X= one_hot_encode(X,'bowling_style')
-    # X= one_hot_encode(X,'batting_style')
     X= one_hot_encode_t20(X,'gender')
-    # X=X.fillna(0)
-    #drop categorical columns
     cols=['bowling_average_n1',
        'bowling_strike_rate_n1', 'bowling_average_n2',
        'bowling_strike_rate_n2', 'bowling_average_n3',
@@ -168,26 +133,21 @@ def encode_playing_role_vectorized_t20(df, column='playing_role'):
     Returns:
     - pd.DataFrame: A DataFrame with binary columns ['batter', 'wicketkeeper', 'bowler', 'allrounder'].
     """
-    # Initialize new columns with zeros
     df['batter'] = 0
     df['wicketkeeper'] = 0
     df['bowler'] = 0
     df['allrounder'] = 0
 
-    # Handle non-null playing_role by replacing NaN with "None" and converting to lowercase for consistency
-    non_null_roles = df[column].fillna("None").str.lower()  # Convert to lowercase
+    non_null_roles = df[column].fillna("None").str.lower()
 
-    # Vectorized checks for roles (we check if role contains certain keywords in lowercase)
     df['batter'] += non_null_roles.str.contains("batter").astype(int)
     df['wicketkeeper'] += non_null_roles.str.contains("wicketkeeper").astype(int)
     df['bowler'] += non_null_roles.str.contains("bowler").astype(int)
     df['allrounder'] += non_null_roles.str.contains("allrounder").astype(int)
 
-    # Handle the 'Allrounder' specification of "Batting" or "Bowling" (e.g., "Batting Allrounder")
     df['batter'] += non_null_roles.str.contains("allrounder.*batting").astype(int)
     df['bowler'] += non_null_roles.str.contains("allrounder.*bowling").astype(int)
 
-    # Fill NaN values with 0 (important to handle NaN properly before converting to int)
     df['batter'] = df['batter'].fillna(0).astype(int)
     df['wicketkeeper'] = df['wicketkeeper'].fillna(0).astype(int)
     df['bowler'] = df['bowler'].fillna(0).astype(int)
@@ -196,43 +156,29 @@ def encode_playing_role_vectorized_t20(df, column='playing_role'):
     return df[['batter', 'wicketkeeper', 'bowler', 'allrounder']]
 
 def predict_scores_t20(trained_models, X_test):
-    # Ensure columns of X_test align with X_train columns
-    # X_test = X_test[numeric_columns]
-
     test_data = pd.DataFrame()
 
-    # Loop through each model to predict scores
     for model_name, model_info in trained_models.items():
-        model = model_info['model']  # Extract the trained model
-        pred_scores = model.predict(X_test)  # Predict the scores
+        model = model_info['model']
+        pred_scores = model.predict(X_test)
 
-        # Store each model's predicted scores in the DataFrame
         test_data['predicted_score'] = pred_scores
 
     return test_data
 
 def predictions_per_match_t20(trained_models, X_test, test):
-    # Call predict_scores to get the predicted scores DataFrame
     predictions = predict_scores_t20(trained_models, X_test)
 
-    # Reset indices of test and predictions for alignment
     test_reset = test.reset_index(drop=True)
     predictions = predictions.reset_index(drop=True)
 
-    # Assign match_id and fantasy_score_total from test to predictions DataFrame
     predictions['match_id'] = test_reset.get('match_id')
     predictions['player_id']=test_reset.get('player_id')
     predictions['fantasy_score_total'] = test_reset.get('fantasy_score_total')
-    # predictions['match_type'] = test_reset.get('match_type')
 
     return predictions, test_reset
 
 def preprocessdf_t20(df):
-    # df['start_date']= df['date']
-    # df.drop('date', axis=1, inplace=True)
-    # df.drop('end_date', axis=1, inplace=True)
-
-    # Convert 'start_date' and 'end_date' columns to datetime format
     df['start_date'] = pd.to_datetime(df['start_date'])
     df = df.sort_values(by='start_date').reset_index(drop=True)
     return df
@@ -240,8 +186,8 @@ def preprocessdf_t20(df):
 def generate_predictions_t20(train_start_date, train_end_date, test_start_date, test_end_date):
     train_start = train_start_date.replace('-', '_')
     train_end = train_end_date.replace('-', '_')
-    # # Load the trained models
-    # model_path = os.path.abspath(os.path.join(current_dir, "..", "..","src", "model_artifacts",f"Model_UI_{train_start}-{train_end}_t20.pkl" ))
+
+    # Load the trained models
     combined_model_path = os.path.abspath(os.path.join(current_dir, "..", "model_artifacts", f"Model_UI_{train_start}-{train_end}.pkl"))
     file_path = os.path.abspath(os.path.join(current_dir, "..", "..","src", "data", "processed", "final_training_file_t20.csv"))
     df = pd.read_csv(file_path, index_col=False)
@@ -289,51 +235,6 @@ def generate_predictions_t20(train_start_date, train_end_date, test_start_date, 
                        'avg_against_opposition', 'bowling_style',
                        'gender_female', 'gender_male', 'batter', 'wicketkeeper', 'bowler',
                        'allrounder']
-
-    # columns = ['start_date', 'player_id', 'match_id', 'match_type', 'playing_role',
-    #            'batting_average_n1', 'strike_rate_n1', 'boundary_percentage_n1',
-    #            'batting_average_n2', 'strike_rate_n2', 'boundary_percentage_n2',
-    #            'batting_average_n3', 'strike_rate_n3', 'boundary_percentage_n3',
-    #            'centuries_cumsum', 'half_centuries_cumsum', 'avg_runs_scored',
-    #            'avg_strike_rate', 'avg_half_centuries', 'avg_centuries',
-    #            'avg_rolling_ducks', 'strike_rotation_percentage',
-    #            'avg_strike_rotation_percentage', 'conversion_30_to_50',
-    #            'economy_rate_n1', 'economy_rate_n2', 'economy_rate_n3',
-    #            'wickets_in_n_matches', 'total_overs_throwed', 'bowling_average_n1',
-    #            'bowling_strike_rate_n1', 'bowling_average_n2',
-    #            'bowling_strike_rate_n2', 'bowling_average_n3',
-    #            'bowling_strike_rate_n3', 'CBR', 'CBR2', 'fielding_points',
-    #            'four_wicket_hauls_n', 'highest_runs', 'highest_wickets',
-    #            'order_seen_mode', 'longterm_avg_runs', 'longterm_var_runs',
-    #            'longterm_avg_strike_rate', 'longterm_avg_wickets_per_match',
-    #            'longterm_var_wickets_per_match', 'longterm_avg_economy_rate',
-    #            'longterm_total_matches_of_type', 'avg_fantasy_score_1',
-    #            'avg_fantasy_score_5', 'avg_fantasy_score_10', 'avg_fantasy_score_15',
-    #            'avg_fantasy_score_20', 'rolling_ducks', 'rolling_maidens', 'gender',
-    #            'α_batsmen_score', 'α_bowler_score', 'batsman_rating', 'bowler_rating',
-    #            'fantasy_score_total', 'longterm_total_matches_of_type','bowling_style']
-
-    # numeric_columns = ['batting_average_n1', 'strike_rate_n1', 'boundary_percentage_n1',
-    #                    'batting_average_n2', 'strike_rate_n2', 'boundary_percentage_n2',
-    #                    'batting_average_n3', 'strike_rate_n3', 'boundary_percentage_n3',
-    #                    'centuries_cumsum', 'half_centuries_cumsum', 'avg_runs_scored',
-    #                    'avg_strike_rate', 'avg_half_centuries', 'avg_centuries',
-    #                    'avg_rolling_ducks', 'strike_rotation_percentage',
-    #                    'avg_strike_rotation_percentage', 'conversion_30_to_50',
-    #                    'economy_rate_n1', 'economy_rate_n2', 'economy_rate_n3',
-    #                    'wickets_in_n_matches', 'total_overs_throwed', 'CBR', 'CBR2',
-    #                    'fielding_points', 'four_wicket_hauls_n', 'highest_runs',
-    #                    'highest_wickets', 'order_seen_mode', 'longterm_avg_runs',
-    #                    'longterm_var_runs', 'longterm_avg_strike_rate',
-    #                    'longterm_avg_wickets_per_match', 'longterm_var_wickets_per_match',
-    #                    'longterm_avg_economy_rate', 'avg_fantasy_score_1',
-    #                    'avg_fantasy_score_5', 'avg_fantasy_score_10', 'avg_fantasy_score_15',
-    #                    'avg_fantasy_score_20', 'rolling_ducks', 'rolling_maidens',
-    #                    'α_batsmen_score', 'batsman_rating', 'bowler_rating',
-    #                      'bowling_style',
-    #                    'gender_female', 'gender_male', 'batter', 'wicketkeeper', 'bowler',
-    #                    'allrounder']
-
     df = df[columns]
 
     df = preprocess_t20(df)
@@ -348,8 +249,6 @@ def generate_predictions_t20(train_start_date, train_end_date, test_start_date, 
 
     test.drop(['match_type'], axis=1, inplace=True)
 
-    # with open(model_path, 'rb') as file:
-    #     trained_models = pickle.load(file)
     with open(combined_model_path, 'rb') as file:
         combined_models = pickle.load(file)
 
@@ -369,10 +268,6 @@ def generate_predictions_t20(train_start_date, train_end_date, test_start_date, 
 def generate_predictions_test(train_start_date, train_end_date,test_start_date, test_end_date):
     train_start = train_start_date.replace('-', '_')
     train_end = train_end_date.replace('-', '_')
-    # Load the trained models
-    # model_path = os.path.abspath(os.path.join(current_dir, "..", "..","src", "model_artifacts",f"Model_UI_{train_start}-{train_end}_test.pkl" ))
-    # with open(model_path, 'rb') as file:
-    #     trained_models = pickle.load(file)
     combined_model_path = os.path.abspath(os.path.join(current_dir, "..", "model_artifacts", f"Model_UI_{train_start}-{train_end}.pkl"))
     with open(combined_model_path, 'rb') as file:
         combined_models = pickle.load(file)
@@ -403,10 +298,6 @@ def generate_predictions_test(train_start_date, train_end_date,test_start_date, 
 def generate_predictions_odi(train_start_date, train_end_date,test_start_date, test_end_date):
     train_start = train_start_date.replace('-', '_')
     train_end = train_end_date.replace('-', '_')
-    # # Load the trained models
-    # model_path = os.path.abspath(os.path.join(current_dir, "..", "..","src", "model_artifacts",f"Model_UI_{train_start}-{train_end}_odi.pkl" ))
-    # with open(model_path, 'rb') as file:
-    #     trained_models = pickle.load(file)
     combined_model_path = os.path.abspath(os.path.join(current_dir, "..", "model_artifacts", f"Model_UI_{train_start}-{train_end}.pkl"))
     with open(combined_model_path, 'rb') as file:
         combined_models = pickle.load(file)
@@ -420,7 +311,7 @@ def generate_predictions_odi(train_start_date, train_end_date,test_start_date, t
     neural = Sequential([
         Dense(64, activation='relu', input_shape=(6,)),
         Dense(32, activation='relu'),
-        Dense(1, activation='linear')  # Output layer
+        Dense(1, activation='linear')  
     ])
     neural.compile(optimizer='adam', loss='mse', metrics=['mae'])
     neural.set_weights(neural_weights)
@@ -448,28 +339,6 @@ def generate_predictions_odi(train_start_date, train_end_date,test_start_date, t
        'Pitch_Type_Batting-Friendly', 'role_factor', 'odi_impact',
        'Pitch_Type_Bowling-Friendly', 'Pitch_Type_Neutral', 'ARPO_venue',
        'BSR_venue']
-    # columns = [
-    #    'player_id', 'match_id', 'match_type', 'start_date',
-    #    'batting_average_n1', 'strike_rate_n1', 'boundary_percentage_n1',
-    #    'batting_average_n2', 'strike_rate_n2', 'boundary_percentage_n2',
-    #    'batting_average_n3', 'strike_rate_n3', 'boundary_percentage_n3',
-    #    'centuries_cumsum', 'half_centuries_cumsum', 'avg_runs_scored',
-    #    'avg_strike_rate', 'avg_half_centuries', 'avg_centuries',
-    #    'avg_rolling_ducks', 'strike_rotation_percentage',
-    #    'avg_strike_rotation_percentage', 'conversion_30_to_50',
-    #    'economy_rate_n1', 'economy_rate_n2', 'economy_rate_n3',
-    #    'wickets_in_n_matches', 'total_overs_throwed', 'CBR', 'CBR2', 'fielding_points',
-    #    'four_wicket_hauls_n', 'highest_runs', 'highest_wickets',
-    #    'order_seen_mode', 'longterm_avg_runs', 'longterm_var_runs',
-    #    'longterm_avg_strike_rate', 'longterm_avg_wickets_per_match',
-    #    'longterm_var_wickets_per_match', 'longterm_avg_economy_rate',
-    #    'avg_fantasy_score_1', 'avg_fantasy_score_5', 'avg_fantasy_score_10', 'avg_fantasy_score_15',
-    #    'avg_fantasy_score_20', 'rolling_ducks', 'rolling_maidens',
-    #    'α_batsmen_score', 'batsman_rating', 'bowler_rating', 
-    #    'fantasy_score_total', 'bowling_style', 'selected', 
-    # 'gender_female', 'gender_male', 'dot_ball_percentage_n1', 'dot_ball_percentage_n2', 'dot_ball_percentage_n3', 'longterm_dot_ball_percentage', 'dot_ball_percentage', 'longterm_var_dot_ball_percentage',
-    #      'role_factor', 'odi_impact']
-
 
     file_path = os.path.abspath(os.path.join(current_dir, "..", "..","src", "data", "processed", "final_training_file_odi.csv"))
     df = pd.read_csv(file_path, index_col=False)
