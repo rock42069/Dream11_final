@@ -1,11 +1,7 @@
 import json
-import sys
 import os
 import pandas as pd
-import numpy as np
-import subprocess
 import requests
-import csv
 from bs4 import BeautifulSoup
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from threading import Lock
@@ -29,7 +25,6 @@ def execute_scraper():
     json_zip_file = "all_json.zip"
     csv_zip_file = "all_csv2.zip"
 
-    # make sure all the directories exist, if not create them using the os module
     if not os.path.exists(target_json_dir):
         os.makedirs(target_json_dir)
     
@@ -37,13 +32,10 @@ def execute_scraper():
     with open(target_people_csv_path, 'w') as file:
         file.write(response.text)
 
-    # download the zip files
     os.system(f"curl {json_url} -O {json_zip_file}")
 
-    # unzip the files
     os.system(f"unzip {json_zip_file} -d {target_json_dir}")
 
-    # delete the zip files
     os.system(f"rm {json_zip_file}")
     os.system(f"rm {csv_zip_file}")
 
@@ -53,7 +45,7 @@ def execute_scraper():
 dir_with_cricsheets_json = json_dir
 stored_dir = dir_with_cricsheets_json
 
-output_csv_json_generator = this_file_dir + "../data/interim/total_data.csv" # json -> csv with 2 rows per player per match (1 per inning)
+output_csv_json_generator = this_file_dir + "../data/interim/total_data.csv"
 
 match_types_unique = set()
 
@@ -67,7 +59,7 @@ match_attributes = [
     "match_type"
 ]
 
-batsman_attributes = [ #now contains all the attributes
+batsman_attributes = [
     "player_id",
     "runs_scored",
     "player_out", 
@@ -145,7 +137,7 @@ def parse_info_data(info_data):
         ret[attribute] = info_data.get(attribute, None)
     return ret
 
-def get_players_data_dict(players_in_match, player_ids, info_dict): # returns a dictionary with all the players in the match and their attributes
+def get_players_data_dict(players_in_match, player_ids, info_dict):
     total_data = {}
     
     for player in players_in_match:
@@ -252,19 +244,15 @@ def parse_innings_data(innings_data, players_in_match, match_attributes_parsed, 
     for session in innings_data:
         total_data = get_players_data_dict(players_in_match, player_ids, match_info)
         batsman_order = []
-        batsman_data = {}
-        bowler_data = {}
         num_seen = 1
 
         overs = get_overs(session)
-        for over in overs: # levels "over" and "deliveries"
-            over_number = over["over"]
+        for over in overs:
             over_ball_list = over["deliveries"]
             runs_in_over = 0
-            for ball in over_ball_list: # ball by ball
+            for ball in over_ball_list:
                 batsman = ball["batter"]
                 bowler = ball["bowler"]
-                non_striker = ball["non_striker"]
 
                 if batsman not in batsman_order:
                     total_data[batsman]["order_seen"] = num_seen
@@ -281,9 +269,8 @@ def parse_innings_data(innings_data, players_in_match, match_attributes_parsed, 
 
                     kind = wicket_data["kind"]
 
-                    total_data[bowler]["wickets_taken"] += 1 # blindly adding, need to remove on kind basis
+                    total_data[bowler]["wickets_taken"] += 1
 
-                    # CATCH
                     if kind == "caught":
                         for fielder in wicket_data["fielders"]:
                             try:
@@ -295,13 +282,12 @@ def parse_innings_data(innings_data, players_in_match, match_attributes_parsed, 
                             except:
                                 pass
                     
-                    # RUN OUT
                     if kind == "run out":
                         total_data[bowler]["wickets_taken"] -= 1
                         fielders = wicket_data["fielders"]
                         fielders = fielders if fielders != None else []
 
-                        if fielders == []: # broken dataset failsafe
+                        if fielders == []:
                             pass
                         else:
                             if len(fielders) >= 2:
@@ -315,13 +301,11 @@ def parse_innings_data(innings_data, players_in_match, match_attributes_parsed, 
                                     total_data[fielders[0]["name"]]["run_out_direct"] += 1
                                 except:
                                     pass
-                    
 
-                    # STUMPING
                     if kind == "stumped":
                         total_data[bowler]["wickets_taken"] -= 1
                         fielders = wicket_data["fielders"]
-                        try: # broken dataset failsafe
+                        try:
                             total_data[fielders[0]["name"]]["stumpings_done"] += 1
                         except:
                             pass
@@ -455,7 +439,7 @@ def export_dict(dict_overall):
             f.write(str(dict_overall[attributes_overall[i]]) + ',')
         f.write(str(dict_overall[attributes_overall[-1]]) + '\n')
 
-def parse_innings_data_overall(innings_data, players_in_match, match_attributes_parsed, player_ids, match_info):
+def parse_innings_data_overall(innings_data, match_info):
     for i, session in enumerate(innings_data):
         innings_number = i + 1
 
@@ -541,15 +525,9 @@ def parse_innings_data_overall(innings_data, players_in_match, match_attributes_
 
 
         overs = get_overs(session)
-        for over in overs: # levels "over" and "deliveries"
-            over_number = over["over"]
+        for over in overs:
             over_ball_list = over["deliveries"]
-            runs_in_over = 0
-            for ball in over_ball_list: # ball by ball
-                batsman = ball["batter"]
-                bowler = ball["bowler"]
-                non_striker = ball["non_striker"]
-
+            for ball in over_ball_list:
                 runs_scored = ball["runs"]["batter"]
                 runs_extras = ball["runs"]["extras"]
 
@@ -612,13 +590,7 @@ def get_players_overall(info_data):
 def generate_overall(file_path):
     info_data, innings_data = import_data_overall(file_path)
 
-    player_ids = info_data["registry"]["people"]
-
-    team_split = info_data["players"]
-    players_in_match = get_players_overall(info_data)
-
-    match_attributes_parsed = parse_info_data(info_data)
-    parse_innings_data_overall(innings_data, players_in_match, match_attributes_parsed, player_ids, info_data)
+    parse_innings_data_overall(innings_data, info_data)
 
 
 def mw_overall_generator():
@@ -639,24 +611,21 @@ def mw_overall_generator():
 # FILE FIND: adding_names.py
 #################################
 def get_player_details(cricinfo_id, total_players):
-    global counter  # Declare the global counter
+    global counter
     url = f"https://www.espncricinfo.com/cricketers/player-{cricinfo_id}"
     response = requests.get(url)
 
     if response.status_code == 200:
         soup = BeautifulSoup(response.text, 'html.parser')
 
-        # Initialize variables
         full_name = batting_style = bowling_style = playing_role = None
         teams = []
-        # Extract full name
         full_name_section = soup.find('div', class_="ds-col-span-2 lg:ds-col-span-1")
         if full_name_section:
             name_label = full_name_section.find('p', class_="ds-text-tight-m ds-font-regular ds-uppercase ds-text-typo-mid3")
             if name_label and name_label.text == "Full Name":
                 full_name = full_name_section.find('span', class_="ds-text-title-s ds-font-bold ds-text-typo").text.strip()
 
-        # Extract other details
         info_sections = soup.find_all('div')
         for section in info_sections:
             label = section.find('p', class_="ds-text-tight-m ds-font-regular ds-uppercase ds-text-typo-mid3")
@@ -685,7 +654,6 @@ def get_player_details(cricinfo_id, total_players):
         return cricinfo_id, full_name, batting_style, bowling_style, playing_role, teams
 
     else:
-        # Update progress counter for failed requests
         with counter_lock:
             counter += 1
             print(f"Progress: {counter}/{total_players} players processed (Failed).")
@@ -712,23 +680,18 @@ def run_scraper_parallel(data, max_workers):
 
     return results
 
-
 def aggregate_player_stats(df):
-    # Select numerical columns
     num_columns = df.select_dtypes(include='number').columns
 
-    # Group by 'player' and 'match' columns and sum the numerical columns
     aggregated_df = df.groupby(['player_id', 'match_id'], as_index=False)[num_columns].sum()
 
-    # For string columns (if any), use first (or other aggregation method)
     for col in df.select_dtypes(exclude='number').columns:
         aggregated_df[col] = df.groupby(['player_id', 'match_id'])[col].first().values
 
     return aggregated_df
 
-
 def adding_names():
-    global counter  # Reset counter for a new run
+    global counter
     counter = 0
 
     people_csv_adding_names = pd.read_csv(this_file_dir + '../data/raw/cricksheet/people.csv')
@@ -786,7 +749,7 @@ def aggregate():
 def rename_date():
     total_data_path = this_file_dir + "../data/interim/total_data.csv"
     df = pd.read_csv(total_data_path, index_col= False)
-    # split date column and take first element by " - "
+
     df['date'] = df['date'].str.split(" - ").str[0]
     df.rename(columns={'date': 'start_date'}, inplace=True)
     os.remove(total_data_path)
@@ -801,18 +764,15 @@ def get_player_details(cricinfo_id, total_players):
     if response.status_code == 200:
         soup = BeautifulSoup(response.text, 'html.parser')
         
-        # Initialize variables
         full_name = batting_style = bowling_style = playing_role = None
         teams = []
         
-        # Extract full name
         full_name_section = soup.find('div', class_="ds-col-span-2 lg:ds-col-span-1")
         if full_name_section:
             name_label = full_name_section.find('p', class_="ds-text-tight-m ds-font-regular ds-uppercase ds-text-typo-mid3")
             if name_label and name_label.text == "Full Name":
                 full_name = full_name_section.find('span', class_="ds-text-title-s ds-font-bold ds-text-typo").text.strip()
         
-        # Extract other details
         info_sections = soup.find_all('div')
         for section in info_sections:
             label = section.find('p', class_="ds-text-tight-m ds-font-regular ds-uppercase ds-text-typo-mid3")
@@ -829,14 +789,12 @@ def get_player_details(cricinfo_id, total_players):
             team_links = teams_section.find_all('a', class_="ds-flex ds-items-center ds-space-x-4")
             for team_link in team_links:
                 title = team_link.get('title', '')
-                team_name = title.split("'s ", 1)[1].strip()  # Get the part after "'s "
+                team_name = title.split("'s ", 1)[1].strip()
                 if team_name.endswith(" team profile"):
                     team_name = team_name[:-13]
                 if team_name:
                     teams.append(team_name)
 
-
-        # Update progress
         with counter_lock:
             counter += 1
             print(f"Progress: {counter}/{total_players} players processed.")           
@@ -865,28 +823,21 @@ def run_scraper_parallel(data, total_players, max_workers):
 def adding_names():
     global counter
 
-    # Load data
     data = pd.read_csv(this_file_dir + '../data/raw/cricksheet/people.csv')
-    total_players = len(data)  # Total number of players
-    counter = 0  # Reset counter
+    total_players = len(data)
+    counter = 0 
 
-    # Run scraper and collect results
     scraped_data = run_scraper_parallel(data, total_players, max_workers=300)
 
-    # Convert results to a DataFrame
     scraped_df = pd.DataFrame(scraped_data, columns=['key_cricinfo', 'full_name', 'batting_style', 'bowling_style', 'playing_role', 'teams'])
 
-    # Merge with the original data to include the scraped fields
     data = data.merge(scraped_df, on='key_cricinfo', how='left')
 
-    # Rename columns in df2 to match df1
     data = data.rename(columns={"identifier": "player_id"})
 
-    # Merge with interim data
     input_data = pd.read_csv(this_file_dir + '../data/interim/mw_pw.csv')
     final_data = input_data.merge(data, on='player_id', how='left')
 
-    # Save the updated data to a new CSV file
     final_data.to_csv(this_file_dir + '../data/interim/mw_pw_profiles.csv', index=False)
 
     print("Player data updated successfully with parallel scraping.")
@@ -1009,27 +960,22 @@ def export_dict_to_csv(player_data, file_path):
 
 
 
-def parse_innings_data_style(innings_data, players_in_match, name_id, info_data, file_path):
+def parse_innings_data_style(innings_data, name_id, file_path):
     for session in innings_data:
         player_data = prep_dicts(name_id)
 
         overs = get_overs(session)
-        for over in overs: # levels "over" and "deliveries"
-            over_number = over["over"]
+        for over in overs:
             over_ball_list = over["deliveries"]
-            runs_in_over = 0
-            for ball in over_ball_list: # ball by ball
+            for ball in over_ball_list:
                 batsman = ball["batter"]
                 bowler = ball["bowler"]
-
-
 
                 bowler_id = name_id[bowler]
                 batsman_id = name_id[batsman]
 
                 batsman_style = id_batting_style[batsman_id][0]
                 bowler_style = id_bowling_style[bowler_id][0]
-
 
                 runs_scored = ball["runs"]["batter"]
                 extras = ball["runs"]["extras"]
@@ -1116,7 +1062,7 @@ def generate_style(file_path):
         if player not in name_id:
             name_id[player] = None
 
-    parse_innings_data_style(innings_data, players_in_match, name_id, info_data, file_path)
+    parse_innings_data_style(innings_data, name_id, file_path)
 
 def style_based_features():
     ignore_files = ['.', '..', '.DS_Store', 'README.txt']
@@ -1139,13 +1085,9 @@ def style_based_features():
     id_batting_style.drop_duplicates(subset=['player_id'], keep='first', inplace=True)
     id_playing_role.drop_duplicates(subset=['player_id'], keep='first', inplace=True)
 
-    # convert df to dict
     id_bowling_style = id_bowling_style.set_index('player_id').T.to_dict('list')
     id_batting_style = id_batting_style.set_index('player_id').T.to_dict('list')
     id_playing_role = id_playing_role.set_index('player_id').T.to_dict('list')
-
-    
-
 
     for file in os.listdir(json_dir):
         files_processed += 1
