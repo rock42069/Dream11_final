@@ -478,6 +478,28 @@ def train_and_save_model_t20(train_start_date, train_end_date):
         'avg_fantasy_score_20', 'rolling_ducks', 'rolling_maidens','gender',
         'α_batsmen_score', 'α_bowler_score', 'batsman_rating', 'bowler_rating',
         'fantasy_score_total','longterm_total_matches_of_type','avg_against_opposition','bowling_style']
+    # columns=['start_date','player_id', 'match_id', 'match_type','playing_role',
+    #     'batting_average_n1', 'strike_rate_n1', 'boundary_percentage_n1',
+    #     'batting_average_n2', 'strike_rate_n2', 'boundary_percentage_n2',
+    #     'batting_average_n3', 'strike_rate_n3', 'boundary_percentage_n3',
+    #     'centuries_cumsum', 'half_centuries_cumsum', 'avg_runs_scored',
+    #     'avg_strike_rate', 'avg_half_centuries', 'avg_centuries',
+    #     'avg_rolling_ducks', 'strike_rotation_percentage',
+    #     'avg_strike_rotation_percentage', 'conversion_30_to_50',
+    #     'economy_rate_n1', 'economy_rate_n2', 'economy_rate_n3',
+    #     'wickets_in_n_matches', 'total_overs_throwed', 'bowling_average_n1',
+    #     'bowling_strike_rate_n1', 'bowling_average_n2',
+    #     'bowling_strike_rate_n2', 'bowling_average_n3',
+    #     'bowling_strike_rate_n3', 'CBR', 'CBR2', 'fielding_points',
+    #     'four_wicket_hauls_n', 'highest_runs', 'highest_wickets',
+    #     'order_seen_mode', 'longterm_avg_runs', 'longterm_var_runs',
+    #     'longterm_avg_strike_rate', 'longterm_avg_wickets_per_match',
+    #     'longterm_var_wickets_per_match', 'longterm_avg_economy_rate',
+    #     'longterm_total_matches_of_type', 'avg_fantasy_score_1',
+    #     'avg_fantasy_score_5', 'avg_fantasy_score_10', 'avg_fantasy_score_15',
+    #     'avg_fantasy_score_20', 'rolling_ducks', 'rolling_maidens','gender',
+    #     'α_batsmen_score', 'α_bowler_score', 'batsman_rating', 'bowler_rating',
+    #     'fantasy_score_total','longterm_total_matches_of_type','bowling_style']
     df = df[columns]
     df = preproces_t20(df)
     df[['batter', 'wicketkeeper', 'bowler', 'allrounder']] = encode_playing_role_vectorized_t20(df, 'playing_role')
@@ -485,7 +507,7 @@ def train_and_save_model_t20(train_start_date, train_end_date):
     df = preprocessdf_t20(df)
     train = filter_by_date(df, train_start_date, train_end_date)
     y_train = train['fantasy_score_total']
-    train.drop(['match_type'], axis=1, inplace=True)
+    train.drop(['match_type','match_id'], axis=1, inplace=True)
     train.fillna(0, inplace=True)
     numeric_X_train = train.select_dtypes(include=[np.number])
     trained_models = train_models_t20(numeric_X_train.drop('fantasy_score_total', axis=1), y_train)
@@ -551,6 +573,27 @@ def train_and_save_model_odi(train_start_date, train_end_date):
         'Pitch_Type_Bowling-Friendly', 'Pitch_Type_Neutral', 'ARPO_venue',
         'BSR_venue'
     ]
+    # cols= [
+    #    'player_id', 'match_id', 'match_type', 'start_date',
+    #    'batting_average_n1', 'strike_rate_n1', 'boundary_percentage_n1',
+    #    'batting_average_n2', 'strike_rate_n2', 'boundary_percentage_n2',
+    #    'batting_average_n3', 'strike_rate_n3', 'boundary_percentage_n3',
+    #    'centuries_cumsum', 'half_centuries_cumsum', 'avg_runs_scored',
+    #    'avg_strike_rate', 'avg_half_centuries', 'avg_centuries',
+    #    'avg_rolling_ducks', 'strike_rotation_percentage',
+    #    'avg_strike_rotation_percentage', 'conversion_30_to_50',
+    #    'economy_rate_n1', 'economy_rate_n2', 'economy_rate_n3',
+    #    'wickets_in_n_matches', 'total_overs_throwed', 'CBR', 'CBR2', 'fielding_points',
+    #    'four_wicket_hauls_n', 'highest_runs', 'highest_wickets',
+    #    'order_seen_mode', 'longterm_avg_runs', 'longterm_var_runs',
+    #    'longterm_avg_strike_rate', 'longterm_avg_wickets_per_match',
+    #    'longterm_var_wickets_per_match', 'longterm_avg_economy_rate',
+    #    'avg_fantasy_score_1', 'avg_fantasy_score_5', 'avg_fantasy_score_10', 'avg_fantasy_score_15',
+    #    'avg_fantasy_score_20', 'rolling_ducks', 'rolling_maidens',
+    #    'α_batsmen_score', 'batsman_rating', 'bowler_rating', 
+    #    'fantasy_score_total', 'bowling_style', 'selected', 
+    # 'gender_female', 'gender_male', 'dot_ball_percentage_n1', 'dot_ball_percentage_n2', 'dot_ball_percentage_n3', 'longterm_dot_ball_percentage', 'dot_ball_percentage', 'longterm_var_dot_ball_percentage',
+    #      'role_factor', 'odi_impact']
     train_start = train_start_date.replace("-", "_")
     train_end = train_end_date.replace("-", "_")
     model_output_path = os.path.abspath(os.path.join(current_dir, "..", "model_artifacts" , f"Model_UI_{train_start}-{train_end}_odi.pkl"))
@@ -565,7 +608,7 @@ def train_and_save_model_odi(train_start_date, train_end_date):
     train = filter_by_date(df, train_start_date, train_end_date)
 
     y_train = train['fantasy_score_total']
-    x_train = train.drop('fantasy_score_total', axis=1)
+    x_train = train.drop(['selected','fantasy_score_total'], axis=1)
 
     x_train = preprocess_odi(x_train)
 
@@ -597,10 +640,37 @@ def train_and_save_model_odi(train_start_date, train_end_date):
             'neural_weights': neural.get_weights()
         }, file)
 
-train_and_save_model_t20('2011-01-01', '2023-12-31')
-train_and_save_model_test('2011-01-01', '2023-12-31')
-train_and_save_model_odi('2011-01-01', '2023-12-31')
+def model_merge(train_start_date, train_end_date):
+    train_date = train_start_date.replace("-", "_")
+    end_date = train_end_date.replace("-", "_")
+    # Load the trained models
+    model_odi_path = os.path.abspath(os.path.join(current_dir, "..", "model_artifacts" , f"Model_UI_{train_date}-{end_date}_odi.pkl"))
+    model_test_path = os.path.abspath(os.path.join(current_dir, "..", "model_artifacts" , f"Model_UI_{train_date}-{end_date}_test.pkl"))
+    model_t20_path = os.path.abspath(os.path.join(current_dir, "..", "model_artifacts" , f"Model_UI_{train_date}-{end_date}_t20.pkl"))
+
+    model_odi = pickle.load(open(model_odi_path, 'rb'))
+    model_test = pickle.load(open(model_test_path, 'rb'))
+    model_t20 = pickle.load(open(model_t20_path, 'rb'))
+
+    # Combine the models into a single dictionary
+    combined_models = {
+        'odi': model_odi,
+        'test': model_test,
+        't20': model_t20
+    }
+
+    # Save the combined models to a new file
+    combined_model_path = os.path.abspath(os.path.join(current_dir, "..", "model_artifacts" , f"Model_UI_{train_date}-{end_date}.pkl"))
+    pickle.dump(combined_models, open(combined_model_path, 'wb'))
+    os.remove(model_odi_path)
+    os.remove(model_test_path)
+    os.remove(model_t20_path)
 
 
+def main_train_and_save(start,end):
+    train_and_save_model_odi(start, end)
+    train_and_save_model_test(start, end)
+    train_and_save_model_t20(start, end)
+    model_merge(start, end)
 
-
+# main_train_and_save('2000-01-01', '2022-01-01')

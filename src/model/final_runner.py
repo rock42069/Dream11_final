@@ -81,7 +81,10 @@ def process_matches(match_type):
     final_result_df.to_csv( final_path,index=False)
     return final_result_df
 
-process_matches("test")
-process_matches("t20")
-process_matches("odi")
+def main_process_matches():
+    process_matches("test")
+    process_matches("odi")
+    process_matches("t20")
+
+# main_process_matches()
 

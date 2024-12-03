@@ -253,11 +253,12 @@ def preprocessdf_t20(df):
     df = df.sort_values(by='start_date').reset_index(drop=True)
     return df
 
-def generate_prediction_t20(train_start_date, train_end_date, test_start_date, test_end_date):
+def generate_predictions_t20(train_start_date, train_end_date, test_start_date, test_end_date):
     train_start = train_start_date.replace('-', '_')
     train_end = train_end_date.replace('-', '_')
-    # Load the trained models
-    model_path = os.path.abspath(os.path.join(current_dir, "..", "..","src", "model_artifacts",f"Model_UI_{train_start}-{train_end}_t20.pkl" ))
+    # # Load the trained models
+    # model_path = os.path.abspath(os.path.join(current_dir, "..", "..","src", "model_artifacts",f"Model_UI_{train_start}-{train_end}_t20.pkl" ))
+    combined_model_path = os.path.abspath(os.path.join(current_dir, "..", "model_artifacts", f"Model_UI_{train_start}-{train_end}.pkl"))
     file_path = os.path.abspath(os.path.join(current_dir, "..", "..","src", "data", "processed", "final_training_file_t20.csv"))
     df = pd.read_csv(file_path, index_col=False)
 
@@ -305,6 +306,50 @@ def generate_prediction_t20(train_start_date, train_end_date, test_start_date, t
                        'gender_female', 'gender_male', 'batter', 'wicketkeeper', 'bowler',
                        'allrounder']
 
+    # columns = ['start_date', 'player_id', 'match_id', 'match_type', 'playing_role',
+    #            'batting_average_n1', 'strike_rate_n1', 'boundary_percentage_n1',
+    #            'batting_average_n2', 'strike_rate_n2', 'boundary_percentage_n2',
+    #            'batting_average_n3', 'strike_rate_n3', 'boundary_percentage_n3',
+    #            'centuries_cumsum', 'half_centuries_cumsum', 'avg_runs_scored',
+    #            'avg_strike_rate', 'avg_half_centuries', 'avg_centuries',
+    #            'avg_rolling_ducks', 'strike_rotation_percentage',
+    #            'avg_strike_rotation_percentage', 'conversion_30_to_50',
+    #            'economy_rate_n1', 'economy_rate_n2', 'economy_rate_n3',
+    #            'wickets_in_n_matches', 'total_overs_throwed', 'bowling_average_n1',
+    #            'bowling_strike_rate_n1', 'bowling_average_n2',
+    #            'bowling_strike_rate_n2', 'bowling_average_n3',
+    #            'bowling_strike_rate_n3', 'CBR', 'CBR2', 'fielding_points',
+    #            'four_wicket_hauls_n', 'highest_runs', 'highest_wickets',
+    #            'order_seen_mode', 'longterm_avg_runs', 'longterm_var_runs',
+    #            'longterm_avg_strike_rate', 'longterm_avg_wickets_per_match',
+    #            'longterm_var_wickets_per_match', 'longterm_avg_economy_rate',
+    #            'longterm_total_matches_of_type', 'avg_fantasy_score_1',
+    #            'avg_fantasy_score_5', 'avg_fantasy_score_10', 'avg_fantasy_score_15',
+    #            'avg_fantasy_score_20', 'rolling_ducks', 'rolling_maidens', 'gender',
+    #            'α_batsmen_score', 'α_bowler_score', 'batsman_rating', 'bowler_rating',
+    #            'fantasy_score_total', 'longterm_total_matches_of_type','bowling_style']
+
+    # numeric_columns = ['batting_average_n1', 'strike_rate_n1', 'boundary_percentage_n1',
+    #                    'batting_average_n2', 'strike_rate_n2', 'boundary_percentage_n2',
+    #                    'batting_average_n3', 'strike_rate_n3', 'boundary_percentage_n3',
+    #                    'centuries_cumsum', 'half_centuries_cumsum', 'avg_runs_scored',
+    #                    'avg_strike_rate', 'avg_half_centuries', 'avg_centuries',
+    #                    'avg_rolling_ducks', 'strike_rotation_percentage',
+    #                    'avg_strike_rotation_percentage', 'conversion_30_to_50',
+    #                    'economy_rate_n1', 'economy_rate_n2', 'economy_rate_n3',
+    #                    'wickets_in_n_matches', 'total_overs_throwed', 'CBR', 'CBR2',
+    #                    'fielding_points', 'four_wicket_hauls_n', 'highest_runs',
+    #                    'highest_wickets', 'order_seen_mode', 'longterm_avg_runs',
+    #                    'longterm_var_runs', 'longterm_avg_strike_rate',
+    #                    'longterm_avg_wickets_per_match', 'longterm_var_wickets_per_match',
+    #                    'longterm_avg_economy_rate', 'avg_fantasy_score_1',
+    #                    'avg_fantasy_score_5', 'avg_fantasy_score_10', 'avg_fantasy_score_15',
+    #                    'avg_fantasy_score_20', 'rolling_ducks', 'rolling_maidens',
+    #                    'α_batsmen_score', 'batsman_rating', 'bowler_rating',
+    #                      'bowling_style',
+    #                    'gender_female', 'gender_male', 'batter', 'wicketkeeper', 'bowler',
+    #                    'allrounder']
+
     df = df[columns]
 
     df = preprocess_t20(df)
@@ -319,8 +364,12 @@ def generate_prediction_t20(train_start_date, train_end_date, test_start_date, t
 
     test.drop(['match_type'], axis=1, inplace=True)
 
-    with open(model_path, 'rb') as file:
-        trained_models = pickle.load(file)
+    # with open(model_path, 'rb') as file:
+    #     trained_models = pickle.load(file)
+    with open(combined_model_path, 'rb') as file:
+        combined_models = pickle.load(file)
+
+    trained_models = combined_models['t20']
 
     X_test = test[numeric_columns]
 
@@ -337,9 +386,13 @@ def generate_predictions_test(train_start_date, train_end_date,test_start_date, 
     train_start = train_start_date.replace('-', '_')
     train_end = train_end_date.replace('-', '_')
     # Load the trained models
-    model_path = os.path.abspath(os.path.join(current_dir, "..", "..","src", "model_artifacts",f"Model_UI_{train_start}-{train_end}_test.pkl" ))
-    with open(model_path, 'rb') as file:
-        trained_models = pickle.load(file)
+    # model_path = os.path.abspath(os.path.join(current_dir, "..", "..","src", "model_artifacts",f"Model_UI_{train_start}-{train_end}_test.pkl" ))
+    # with open(model_path, 'rb') as file:
+    #     trained_models = pickle.load(file)
+    combined_model_path = os.path.abspath(os.path.join(current_dir, "..", "model_artifacts", f"Model_UI_{train_start}-{train_end}.pkl"))
+    with open(combined_model_path, 'rb') as file:
+        combined_models = pickle.load(file)
+    trained_models = combined_models['test']
     
     file_path = os.path.abspath(os.path.join(current_dir, "..", "..","src", "data", "processed", "final_training_file_test.csv"))
     df = pd.read_csv(file_path, index_col=False)
@@ -366,10 +419,14 @@ def generate_predictions_test(train_start_date, train_end_date,test_start_date, 
 def generate_predictions_odi(train_start_date, train_end_date,test_start_date, test_end_date):
     train_start = train_start_date.replace('-', '_')
     train_end = train_end_date.replace('-', '_')
-    # Load the trained models
-    model_path = os.path.abspath(os.path.join(current_dir, "..", "..","src", "model_artifacts",f"Model_UI_{train_start}-{train_end}_odi.pkl" ))
-    with open(model_path, 'rb') as file:
-        trained_models = pickle.load(file)
+    # # Load the trained models
+    # model_path = os.path.abspath(os.path.join(current_dir, "..", "..","src", "model_artifacts",f"Model_UI_{train_start}-{train_end}_odi.pkl" ))
+    # with open(model_path, 'rb') as file:
+    #     trained_models = pickle.load(file)
+    combined_model_path = os.path.abspath(os.path.join(current_dir, "..", "model_artifacts", f"Model_UI_{train_start}-{train_end}.pkl"))
+    with open(combined_model_path, 'rb') as file:
+        combined_models = pickle.load(file)
+    trained_models = combined_models['odi']
     
     trained_modelscc = trained_models['trained_modelscc']
     trained_modelsrr = trained_models['trained_modelsrr']
@@ -407,6 +464,28 @@ def generate_predictions_odi(train_start_date, train_end_date,test_start_date, t
        'Pitch_Type_Batting-Friendly', 'role_factor', 'odi_impact',
        'Pitch_Type_Bowling-Friendly', 'Pitch_Type_Neutral', 'ARPO_venue',
        'BSR_venue']
+    # columns = [
+    #    'player_id', 'match_id', 'match_type', 'start_date',
+    #    'batting_average_n1', 'strike_rate_n1', 'boundary_percentage_n1',
+    #    'batting_average_n2', 'strike_rate_n2', 'boundary_percentage_n2',
+    #    'batting_average_n3', 'strike_rate_n3', 'boundary_percentage_n3',
+    #    'centuries_cumsum', 'half_centuries_cumsum', 'avg_runs_scored',
+    #    'avg_strike_rate', 'avg_half_centuries', 'avg_centuries',
+    #    'avg_rolling_ducks', 'strike_rotation_percentage',
+    #    'avg_strike_rotation_percentage', 'conversion_30_to_50',
+    #    'economy_rate_n1', 'economy_rate_n2', 'economy_rate_n3',
+    #    'wickets_in_n_matches', 'total_overs_throwed', 'CBR', 'CBR2', 'fielding_points',
+    #    'four_wicket_hauls_n', 'highest_runs', 'highest_wickets',
+    #    'order_seen_mode', 'longterm_avg_runs', 'longterm_var_runs',
+    #    'longterm_avg_strike_rate', 'longterm_avg_wickets_per_match',
+    #    'longterm_var_wickets_per_match', 'longterm_avg_economy_rate',
+    #    'avg_fantasy_score_1', 'avg_fantasy_score_5', 'avg_fantasy_score_10', 'avg_fantasy_score_15',
+    #    'avg_fantasy_score_20', 'rolling_ducks', 'rolling_maidens',
+    #    'α_batsmen_score', 'batsman_rating', 'bowler_rating', 
+    #    'fantasy_score_total', 'bowling_style', 'selected', 
+    # 'gender_female', 'gender_male', 'dot_ball_percentage_n1', 'dot_ball_percentage_n2', 'dot_ball_percentage_n3', 'longterm_dot_ball_percentage', 'dot_ball_percentage', 'longterm_var_dot_ball_percentage',
+    #      'role_factor', 'odi_impact']
+
 
     file_path = os.path.abspath(os.path.join(current_dir, "..", "..","src", "data", "processed", "final_training_file_odi.csv"))
     df = pd.read_csv(file_path, index_col=False)
@@ -418,7 +497,7 @@ def generate_predictions_odi(train_start_date, train_end_date,test_start_date, t
 
 
     x_test1 = test_df.drop(['fantasy_score_total', 'start_date', 'match_id', 'player_id','selected','match_type'], axis=1)
-    x_test2 = test_df.drop(['fantasy_score_total', 'start_date', 'match_id', 'player_id','match_type'], axis=1)
+    x_test2 = test_df.drop(['fantasy_score_total', 'start_date', 'match_id', 'player_id','match_type', 'selected'], axis=1)
         
     columns1 = x_test1.columns.to_list()
     columns2 = x_test2.columns.to_list()
@@ -435,7 +514,9 @@ def generate_predictions_odi(train_start_date, train_end_date,test_start_date, t
     predictions = predictions[['predicted_score', 'match_id', 'player_id', 'fantasy_score_total']]
     predictions.to_csv(output_file_path, index=False)
 
+def main_generate_predictions(train_start, train_end, test_start, test_end):
+    generate_predictions_t20(train_start, train_end, test_start, test_end)
+    generate_predictions_odi(train_start, train_end, test_start, test_end)
+    generate_predictions_test(train_start, train_end, test_start, test_end)
 
-# generate_prediction_t20('2011-01-01', '2023-12-31', '2024-01-01', '2024-11-20')
-generate_predictions_odi('2011-01-01', '2023-12-31', '2024-01-01', '2024-11-20')
-# generate_predictions_test('2011-01-01', '2023-12-31', '2024-01-01', '2024-11-20')
+# main_generate_predictions('2000-01-01', '2022-01-01', '2023-01-01', '2024-12-31')

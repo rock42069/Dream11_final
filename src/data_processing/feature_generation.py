@@ -1844,7 +1844,7 @@ class FeatureGeneration:
         self.calculate_rolling_gini_and_caa_with_original_data()
         self.encode_preprocess()
 
-def generate_features_test():
+def main_test():
     mw_pw_profile = pd.read_csv(file_path_mw_pw, index_col=False)
     mw_overall = pd.read_csv(file_path_mw_overall, index_col=False)
     
@@ -1853,8 +1853,6 @@ def generate_features_test():
     
     out_file_path = os.path.abspath(os.path.join(current_dir, "..", "..", "src", "data", "processed", 'final_training_file_test.csv'))
     feature_gen.mw_pw_profile.to_csv(out_file_path, index=False)
-
-generate_features_test()
 
 ############################################################################################################################################################################
 ############################################################################################################################################################################
@@ -1965,21 +1963,21 @@ class FeatureEngineering_t20:
 
     def calculate_rolling_bowling_stats_with_ema(self, group, n1, n2, n3):
         group = group.sort_values('start_date')
-        group['runs_n1'] = self.calculate_ema(group['runs_conceded'], n1)
-        group['wickets_n1'] = self.calculate_ema(group['wickets_taken'], n1)
-        group['balls_n1'] = self.calculate_ema(group['balls_bowled'], n1)
+        group['runs_n1'] = self.calculate_ema(group['runs_conceded'].shift(), n1)
+        group['wickets_n1'] = self.calculate_ema(group['wickets_taken'].shift(), n1)
+        group['balls_n1'] = self.calculate_ema(group['balls_bowled'].shift(), n1)
         group['bowling_average_n1'] = group['runs_n1'] / group['wickets_n1'].replace(0, np.nan)
         group['economy_rate_n1'] = group['runs_n1'] / (group['balls_n1'] / 6)
         group['bowling_strike_rate_n1'] = group['balls_n1'] / group['wickets_n1'].replace(0, np.nan)
-        group['runs_n2'] = self.calculate_ema(group['runs_conceded'], n2)
-        group['wickets_n2'] = self.calculate_ema(group['wickets_taken'], n2)
-        group['balls_n2'] = self.calculate_ema(group['balls_bowled'], n2)
-        group['bowling_average_n2'] = group['runs_n2'] / group['wickets_n2'].replace(0, np.nan)
+        group['runs_n2'] = self.calculate_ema(group['runs_conceded'].shift(), n2)
+        group['wickets_n2'] = self.calculate_ema(group['wickets_taken'].shift(), n2)
+        group['balls_n2'] = self.calculate_ema(group['balls_bowled'].shift(), n2)
+        group['bowling_average_n2'] = group['runs_n2'] / group['wickiets_n2'].replace(0, np.nan)
         group['economy_rate_n2'] = group['runs_n2'] / (group['balls_n2'] / 6)
         group['bowling_strike_rate_n2'] = group['balls_n2'] / group['wickets_n2'].replace(0, np.nan)
-        group['runs_n3'] = self.calculate_ema(group['runs_conceded'], n3)
-        group['wickets_n3'] = self.calculate_ema(group['wickets_taken'], n3)
-        group['balls_n3'] = self.calculate_ema(group['balls_bowled'], n3)
+        group['runs_n3'] = self.calculate_ema(group['runs_conceded'].shift(), n3)
+        group['wickets_n3'] = self.calculate_ema(group['wickets_taken'].shift(), n3)
+        group['balls_n3'] = self.calculate_ema(group['balls_bowled'].shift(), n3)
         group['bowling_average_n3'] = group['runs_n3'] / group['wickets_n3'].replace(0, np.nan)
         group['economy_rate_n3'] = group['runs_n3'] / (group['balls_n3'] / 6)
         group['bowling_strike_rate_n3'] = group['balls_n3'] / group['wickets_n3'].replace(0, np.nan)
@@ -2393,15 +2391,16 @@ class FeatureEngineering_t20:
 
         df['bowling_style'] = df['bowling_style'].apply(self.categorize_bowling_style)
         df['bowling_style'] = self.target_encode(df, 'bowling_style', 'fantasy_score_total')
-        df = self.select_top_players_by_match(df)
+        # df = self.select_top_players_by_match(df)
         df = self.preprocessdf(df)
 
         out_path = os.path.abspath(os.path.join(current_dir, "..", "..", "src", "data", "processed", "final_training_file_t20.csv"))
         df.to_csv(out_path, index=False)
 
-#run the class to generate features
-fe = FeatureEngineering_t20()
-fe.generate_features_t20()
+
+def main_t20():
+    feature_generator = FeatureEngineering_t20()
+    feature_generator.generate_features_t20()
 
 ############################################################################################################################################################################
 ############################################################################################################################################################################
@@ -2538,27 +2537,27 @@ class FeatureGeneratorODI:
         group = group.sort_values('start_date')
 
         # EMA for n1
-        group['runs_n1'] = self.calculate_ema(group['runs_conceded'], n1)
-        group['wickets_n1'] = self.calculate_ema(group['wickets_taken'], n1)
-        group['balls_n1'] = self.calculate_ema(group['balls_bowled'], n1)
+        group['runs_n1'] = self.calculate_ema(group['runs_conceded'].shift(), n1)
+        group['wickets_n1'] = self.calculate_ema(group['wickets_taken'].shift(), n1)
+        group['balls_n1'] = self.calculate_ema(group['balls_bowled'].shift(), n1)
 
         group['bowling_average_n1'] = group['runs_n1'] / group['wickets_n1'].replace(0, np.nan)
         group['economy_rate_n1'] = group['runs_n1'] / (group['balls_n1'] / 6)  # Economy rate = runs / overs
         group['bowling_strike_rate_n1'] = group['balls_n1'] / group['wickets_n1'].replace(0, np.nan)
 
         # EMA for n2
-        group['runs_n2'] = self.calculate_ema(group['runs_conceded'], n2)
-        group['wickets_n2'] = self.calculate_ema(group['wickets_taken'], n2)
-        group['balls_n2'] = self.calculate_ema(group['balls_bowled'], n2)
+        group['runs_n2'] = self.calculate_ema(group['runs_conceded'].shift(), n2)
+        group['wickets_n2'] = self.calculate_ema(group['wickets_taken'].shift(), n2)
+        group['balls_n2'] = self.calculate_ema(group['balls_bowled'].shift(), n2)
 
         group['bowling_average_n2'] = group['runs_n2'] / group['wickets_n2'].replace(0, np.nan)
         group['economy_rate_n2'] = group['runs_n2'] / (group['balls_n2'] / 6)  # Economy rate = runs / overs
         group['bowling_strike_rate_n2'] = group['balls_n2'] / group['wickets_n2'].replace(0, np.nan)
 
         # EMA for n3
-        group['runs_n3'] = self.calculate_ema(group['runs_conceded'], n3)
-        group['wickets_n3'] = self.calculate_ema(group['wickets_taken'],n3)
-        group['balls_n3'] = self.calculate_ema(group['balls_bowled'],n3)
+        group['runs_n3'] = self.calculate_ema(group['runs_conceded'].shift(), n3)
+        group['wickets_n3'] = self.calculate_ema(group['wickets_taken'].shift(),n3)
+        group['balls_n3'] = self.calculate_ema(group['balls_bowled'].shift(),n3)
 
         group['bowling_average_n3'] = group['runs_n3'] / group['wickets_n3'].replace(0, np.nan)
         group['economy_rate_n3'] = group['runs_n3'] / (group['balls_n3'] / 6)  # Economy rate = runs / overs
@@ -3316,9 +3315,17 @@ class FeatureGeneratorODI:
         out_path = os.path.abspath(os.path.join(current_dir, "..", "..", "src", "data", "processed", "final_training_file_ODI.csv"))
         df.to_csv(out_path, index=False)
 
-f = FeatureGeneratorODI()
-f.generate_features_ODI()
+def main_odi():
+    obj = FeatureGeneratorODI()
+    obj.generate_features_ODI()
 
+
+def main_feature_generation(): 
+    main_odi()
+    main_t20()
+    main_test()
+
+# main_feature_generation()
 
 
 
