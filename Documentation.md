@@ -207,6 +207,73 @@ Updates `self.mw_pw_profile` with:
 **Description:**  
 This function calculates the average fantasy score of opponents faced by a player in cricket matches, based on their role (batter, bowler, all-rounder, or neither). The scores are computed using data grouped by player ID, match type, and opposition team.
 
-**Outputs:**  
-Updates `self.mw_pw_profile` with a new column:
-- `avg_of_opponent`: The calculated average opponent fantasy score for each player-role and match combination.
+**Updates:**  
+Updates `self.mw_pw_profile` with a new column `avg_of_opponent`
+
+# train_model.py
+
+#### `train_models_regression`
+**Description:**  
+This function trains multiple regression models on the provided training data.
+
+**Inputs:**
+- `X_train`: The training features.
+- `y_train`: The target target feature score for training the models.
+
+**Outputs/Updates:**
+- `trained_models`: A dictionary containing `model_name`:`model` pairs.
+
+#### `train_models_classification()`
+
+**Description:**  
+This function trains multiple classification models on the provided training data. It includes models such as XGBoost, Logistic Regression, and CatBoost classifiers, and returns the trained models.
+
+**Inputs:**
+- `X_train`: The training features.
+- `y_train`: The target feature score for training the models.
+
+**Outputs/Updates:**
+- `trained_models`: A dictionary containing `model_name`:`model` pairs.
+
+#### `iterative_training()`
+
+**Description:**  
+This function trains regression and classification models iteratively on the input data in batches.
+
+**Inputs:**
+- `X_train`: The training features for regression.
+- `y`: The target variable for regression.
+- `X_trainc`: The training features for classification.
+- `yc`: The target variable for classification.
+- `test`: The test data used for making predictions.
+
+**Outputs/Updates:**
+- `trained_modelsr`: The trained regression models.
+- `trained_modelsc`: The trained classification models.
+- `combined_predictions`: A dataframe containing the combined predictions from both regression and classification models for each iteration.
+
+#### `train_and_save_model_odi`
+
+**Description:**  
+End-to-end function that trains models for ODI matches using historical data, processes the data, and saves the trained models and neural network weights to a file. Documentation for `ODI`, `Test` and `T20` match types follow the same.
+
+**Inputs:**
+- `train_start_date`: The start date for filtering the training data.
+- `train_end_date`: The end date for filtering the training data.
+
+**Outputs/Updates:**
+Saves the following
+- `trained_modelscc`: The trained classification models.
+- `trained_modelsrr`: The trained regression models.
+- `neural_weights`: The trained weights of the neural network.
+
+
+
+
+
+
+
+
+
+
+
