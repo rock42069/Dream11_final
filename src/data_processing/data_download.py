@@ -13,7 +13,6 @@ from threading import Lock
 this_file_dir = os.path.dirname(os.path.abspath(__file__)) + "/"
 
 json_dir = this_file_dir + "../data/raw/cricksheet/json/"
-csv_dir = this_file_dir + "../data/raw/cricksheet/csv/"
 counter = 0
 counter_lock = Lock()
 
@@ -22,11 +21,9 @@ counter_lock = Lock()
 #################################
 def execute_scraper():
     json_url = "https://cricsheet.org/downloads/all_json.zip"
-    csv_url = "https://cricsheet.org/downloads/all_csv2.zip"
     people_csv_url = "https://cricsheet.org/register/people.csv"
 
     target_json_dir = this_file_dir + '../data/raw/cricksheet/json/'
-    target_csv_dir = this_file_dir + '../data/raw/cricksheet/csv/'
     target_people_csv_path = this_file_dir + "../data/raw/cricksheet/people.csv"
 
     json_zip_file = "all_json.zip"
@@ -35,8 +32,6 @@ def execute_scraper():
     # make sure all the directories exist, if not create them using the os module
     if not os.path.exists(target_json_dir):
         os.makedirs(target_json_dir)
-    if not os.path.exists(target_csv_dir):
-        os.makedirs(target_csv_dir)
     
     response = requests.get(people_csv_url)
     with open(target_people_csv_path, 'w') as file:
@@ -44,23 +39,13 @@ def execute_scraper():
 
     # download the zip files
     os.system(f"curl {json_url} -O {json_zip_file}")
-    os.system(f"curl {csv_url} -O {csv_zip_file}")
-    #os.system(f"curl {people_csv_url} -O {target_people_csv_path}")
 
     # unzip the files
     os.system(f"unzip {json_zip_file} -d {target_json_dir}")
-    os.system(f"unzip {csv_zip_file} -d {target_csv_dir}")
 
     # delete the zip files
     os.system(f"rm {json_zip_file}")
     os.system(f"rm {csv_zip_file}")
-
-
-    # script_dir = os.path.dirname(os.path.abspath(__file__))
-    # scraper_path = os.path.join(script_dir, 'scraper.sh')
-
-    # os.system(f'chmod +x {scraper_path}')    
-    # subprocess.call(['sh', scraper_path, '-d', this_file_dir])
 
 #################################
 # FILE FIND: json_generator.py

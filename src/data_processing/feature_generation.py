@@ -388,6 +388,9 @@ def preprocess_before_merge(data1,data2):
     return data1,data2
 
 def get_hemisphere(country):
+    '''
+    Adds a hemisphere column to the dataframe based on the country.
+    '''
     southern_hemisphere = [
         'New Zealand', 'Australia', 'South Africa', 'Argentina', 'Chile', 
         'Uruguay', 'Zimbabwe', 'Namibia', 'Botswana', 'Fiji', 'Malawi', 
@@ -564,7 +567,7 @@ class FeatureGeneration:
     def calculate_fantasy_scores(self):
         """
         Calculates fantasy scores for batting and bowling based on the match data.
-
+        Handles T10, 6ixty, The100, T20, IT20, ODI, and ODM match types.
         Returns:
         pd.DataFrame: Updated mw_pw_profile with fantasy scores.
         """
