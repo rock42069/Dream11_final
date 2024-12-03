@@ -467,7 +467,7 @@ def parse_innings_data_overall(innings_data, match_info):
             export["city"] = ""
         export["dates"] = '"' + str(", ".join(match_info["dates"])) + '"'
         try:
-            export['event_name'] = match_info['event']['name']
+            export['event_name'] = str(match_info['event']['name']).replace(',', ' ')
         except:
             export['event_name'] = ""
         try:
@@ -497,7 +497,7 @@ def parse_innings_data_overall(innings_data, match_info):
         except:
             export["result"] = ""
         try:
-            export["player_of_match"] = str(", ".join(match_info["player_of_match"]))
+            export["player_of_match"] = str(" ".join(match_info["player_of_match"]))
         except:
             export["player_of_match"] = ""
 
@@ -506,7 +506,7 @@ def parse_innings_data_overall(innings_data, match_info):
         export["teams"] = '"' + ", ".join(match_info["teams"]) + '"'
         export["toss_decision"] = match_info["toss"]["decision"]
         export["toss_winner"] = match_info["toss"]["winner"]
-        export["venue"] = match_info["venue"]
+        export["venue"] = str(match_info["venue"]).replace(',', ' ')
         if export["result"] == "":
             export["winner"] = match_info['outcome']['winner']
         else:

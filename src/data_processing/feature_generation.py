@@ -1911,7 +1911,7 @@ class FeatureEngineering_t20:
         group['runs_n2'] = self.calculate_ema(group['runs_conceded'].shift(), n2)
         group['wickets_n2'] = self.calculate_ema(group['wickets_taken'].shift(), n2)
         group['balls_n2'] = self.calculate_ema(group['balls_bowled'].shift(), n2)
-        group['bowling_average_n2'] = group['runs_n2'] / group['wickiets_n2'].replace(0, np.nan)
+        group['bowling_average_n2'] = group['runs_n2'] / group['wickets_n2'].replace(0, np.nan)
         group['economy_rate_n2'] = group['runs_n2'] / (group['balls_n2'] / 6)
         group['bowling_strike_rate_n2'] = group['balls_n2'] / group['wickets_n2'].replace(0, np.nan)
         group['runs_n3'] = self.calculate_ema(group['runs_conceded'].shift(), n3)
