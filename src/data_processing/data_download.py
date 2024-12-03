@@ -402,89 +402,253 @@ def json_generator():
 #################################
 # FILE FIND: mw_overall.py
 #################################
-output_path_mw_overall = this_file_dir + "../data/interim/mw_overall.csv"
+output_csv_overall_path = this_file_dir + "../data/interim/mw_overall.csv"
 
-def matchwise_data_generator():
-    json_files = sorted(os.listdir(json_dir))
-    final_df = []
+attributes_overall = [
+    'match_id',
+    'innings',
+    'batting_team',
+    'runs_off_bat',
+    'extras',
+    'wides',
+    'noballs',
+    'byes',
+    'legbyes',
+    'penalty',
+    'player_dismissed',
+    'bowled',
+    'caught',
+    'caught and bowled',
+    'lbw',
+    'run out',
+    'balls_per_over',
+    'city',
+    'dates',
+    'event_name',
+    'match_number',
+    'gender',
+    'match_type',
+    'match_type_number',
+    'match_referees',
+    'tv_umpires',
+    'umpires',
+    'result',
+    'player_of_match',
+    'season', 'team_type','teams',
+    'toss_decision','toss_winner', 'venue','winner',
+    'players', 'stumped',
+    'hit wicket', 'retired hurt', 'retired not out',
+    'obstructing the field','retired out',
+    'handled the ball', 'hit the ball twice'
+]
 
-    for json_file in json_files:
-        json_path = os.path.join(json_dir, json_file)
-        match_key = os.path.splitext(json_file)[0]
-        csv_path = os.path.join(csv_dir, f"{match_key}.csv")
+def import_data_overall(file_path):
+    with open(file_path, 'r') as file:
+        json_data = json.load(file)
+            
+    
+    info_data = json_data.get("info", {})
+    info_data["match_id"] = file_path.split("/")[-1].split(".")[0]
+    innings_data = json_data.get("innings", [])
+    
+    return info_data, innings_data
 
-        if not os.path.exists(csv_path):
-            print(f"Skipping {json_file} - Corresponding CSV file not found")
-            continue
+def get_wicket_type(wicket):
+    wicket = wicket[0]
+    return wicket["kind"]
 
-        with open(json_path, 'r') as f:
-            data = json.load(f)
+def export_dict(dict_overall):
+    if not os.path.exists(output_csv_overall_path):
+        with open(output_csv_overall_path, 'w') as f:
+            print("File created")
+            for i in attributes_overall[:-1]:
+                f.write(i + ',')
+            f.write(attributes_overall[-1] + '\n')
 
-        teams = data["info"].get("teams", [])
-        if len(teams) != 2:
-            print(f"Skipping {json_file} - Teams information missing or invalid.")
-            continue
+    with open(output_csv_overall_path, 'a') as f:
+        for i in range(len(attributes_overall)-1):
+            f.write(str(dict_overall[attributes_overall[i]]) + ',')
+        f.write(str(dict_overall[attributes_overall[-1]]) + '\n')
 
-        team_players = {team: ", ".join(data["info"].get("players", {}).get(team, [])) for team in teams}
+def parse_innings_data_overall(innings_data, players_in_match, match_attributes_parsed, player_ids, match_info):
+    for i, session in enumerate(innings_data):
+        innings_number = i + 1
 
-        json_row = {  
-            "match_id": match_key,
-            "balls_per_over": data["info"].get("balls_per_over", None),
-            "city": data["info"].get("city", None),
-            "dates": ", ".join(data["info"].get("dates", [])) if data["info"].get("dates") else None,
-            "event_name": data["info"].get("event", {}).get("name", None),
-            "match_number": data["info"].get("event", {}).get("match_number", None),
-            "gender": data["info"].get("gender", None),
-            "match_type": data["info"].get("match_type", None),
-            "match_type_number": data["info"].get("match_type_number", None),
-            "match_referees": ", ".join(data["info"].get("officials", {}).get("match_referees", [])),
-            "tv_umpires": ", ".join(data["info"].get("officials", {}).get("tv_umpires", [])),
-            "umpires": ", ".join(data["info"].get("officials", {}).get("umpires", [])),
-            "result": data["info"].get("outcome", {}).get("result", None),
-            "player_of_match": ", ".join(data["info"].get("player_of_match", [])),
-            "season": data["info"].get("season", None),
-            "team_type": data["info"].get("team_type", None),
-            "teams": ", ".join(teams),
-            "toss_decision": data["info"].get("toss", {}).get("decision", None),
-            "toss_winner": data["info"].get("toss", {}).get("winner", None),
-            "venue": data["info"].get("venue", None),
-            "winner": (
-                "draw" if data["info"].get("outcome", {}).get("result", "").lower() == "draw"
-                else data["info"].get("outcome", {}).get("winner", None)
-            )
-        }
-        json_df = pd.DataFrame([json_row])
+        export = dict()
+        export["match_id"] = match_info["match_id"]
+        export["innings"] = innings_number
+        export["batting_team"] = session["team"]
+        export["runs_off_bat"] = 0
+        export["extras"] = 0
+        export["wides"] = 0
+        export["noballs"] = 0
+        export["byes"] = 0
+        export["legbyes"] = 0
+        export["penalty"] = 0
+        export["player_dismissed"] = 0
+        export["bowled"] = 0
+        export["caught"] = 0
+        export["caught and bowled"] = 0
+        export["lbw"] = 0
+        export["run out"] = 0
+        export["balls_per_over"] = match_info['balls_per_over']
+        try:    
+            export["city"] = match_info["city"]
+        except:
+            export["city"] = ""
+        export["dates"] = '"' + str(", ".join(match_info["dates"])) + '"'
+        try:
+            export['event_name'] = match_info['event']['name']
+        except:
+            export['event_name'] = ""
+        try:
+            export['match_number'] = match_info['event']['match_number']
+        except:
+            export['match_number'] = ""
+        export["gender"] = match_info["gender"]
+        export["match_type"] = match_info["match_type"]
+        try:
+            export["match_type_number"] = match_info["match_type_number"]
+        except:
+            export["match_type_number"] = ""
+        try:
+            export["match_referees"] = '"' + str(", ".join(match_info["officials"]["match_referees"])) + '"'
+        except:
+            export["match_referees"] = ""
+        try:
+            export["tv_umpires"] = '"' + str(", ".join(match_info["officials"]["tv_umpires"])) + '"'
+        except:
+            export["tv_umpires"] = ""
+        try:
+            export["umpires"] = '"' + str(", ".join(match_info["officials"]["umpires"])) + '"'
+        except:
+            export["umpires"] = ""
+        try:
+            export["result"] = match_info["outcome"]["result"]
+        except:
+            export["result"] = ""
+        try:
+            export["player_of_match"] = str(", ".join(match_info["player_of_match"]))
+        except:
+            export["player_of_match"] = ""
 
-        match_data = pd.read_csv(csv_path)
-        aggregated = match_data.groupby(['match_id', 'innings', 'batting_team']).agg({
-            'runs_off_bat': 'sum',
-            'extras': 'sum',
-            'wides': 'sum',
-            'noballs': 'sum',
-            'byes': 'sum',
-            'legbyes': 'sum',
-            'penalty': 'sum',
-            'player_dismissed': 'count',
-        }).reset_index()
+        export["season"] = match_info["season"]
+        export["team_type"] = match_info["team_type"]
+        export["teams"] = '"' + ", ".join(match_info["teams"]) + '"'
+        export["toss_decision"] = match_info["toss"]["decision"]
+        export["toss_winner"] = match_info["toss"]["winner"]
+        export["venue"] = match_info["venue"]
+        if export["result"] == "":
+            export["winner"] = match_info['outcome']['winner']
+        else:
+            export["winner"] = export["result"]
+        players = list(match_info['players'].values())
+        players_export = players[0] + players[1]
+        export["players"] = '"' + ", ".join(players_export) + '"'
+        export["stumped"] = 0
+        export["hit wicket"] = 0
+        export["retired hurt"] = 0
+        export["retired not out"] = 0
+        export["obstructing the field"] = 0
+        export["retired out"] = 0
+        export["handled the ball"] = 0
+        export["hit the ball twice"] = 0
 
-        wicket_counts = match_data.pivot_table(
-            index=['match_id', 'innings', 'batting_team'], 
-            columns='wicket_type', 
-            aggfunc='size', 
-            fill_value=0
-        ).reset_index()
-        aggregated = pd.merge(aggregated, wicket_counts, on=['match_id', 'innings', 'batting_team'], how='left')
 
-        json_df['match_id'] = json_df['match_id'].astype(str)
-        aggregated['match_id'] = aggregated['match_id'].astype(str)
-        combined = aggregated.merge(json_df, on="match_id", how="left")
-        combined['players'] = combined['batting_team'].map(team_players).fillna("Unknown")
+        overs = get_overs(session)
+        for over in overs: # levels "over" and "deliveries"
+            over_number = over["over"]
+            over_ball_list = over["deliveries"]
+            runs_in_over = 0
+            for ball in over_ball_list: # ball by ball
+                batsman = ball["batter"]
+                bowler = ball["bowler"]
+                non_striker = ball["non_striker"]
 
-        final_df.append(combined)
+                runs_scored = ball["runs"]["batter"]
+                runs_extras = ball["runs"]["extras"]
 
-    final_df = pd.concat(final_df, ignore_index=True)
-    final_df.to_csv(output_path_mw_overall, index=False)
-    print(f"Processing completed. Data saved to '{output_path_mw_overall}'.")
+                if "extras" in ball:
+                    extras = ball["extras"]
+                    for extra in extras:
+                        if extra == "wides":
+                            export["wides"] += ball["extras"]["wides"]
+                        elif extra == "noballs":
+                            export["noballs"] += 1
+                        elif extra == "byes":
+                            export["byes"] += ball["extras"]["byes"]
+                        elif extra == "legbyes":
+                            export["legbyes"] += ball["extras"]["legbyes"]
+                        elif extra == "penalty":
+                            export["penalty"] += ball["extras"]["penalty"]
+                export["runs_off_bat"] += runs_scored
+                export["extras"] += runs_extras
+
+                if is_wicket(ball):
+                    export["player_dismissed"] += 1
+                    wicket = ball["wickets"]
+                    wicket_type = get_wicket_type(wicket)
+                    if wicket_type == "bowled":
+                        export["bowled"] += 1
+                    elif wicket_type == "caught":
+                        export["caught"] += 1
+                    elif wicket_type == "caught and bowled":
+                        export["caught and bowled"] += 1
+                    elif wicket_type == "lbw":
+                        export["lbw"] += 1
+                    elif wicket_type == "run out":
+                        export["run out"] += 1
+                    elif wicket_type == "stumped":
+                        export["stumped"] += 1
+                    elif wicket_type == "hit wicket":
+                        export["hit wicket"] += 1
+                    elif wicket_type == "retired hurt":
+                        export["retired hurt"] += 1
+                    elif wicket_type == "retired not out":
+                        export["retired not out"] += 1
+                    elif wicket_type == "obstructing the field":
+                        export["obstructing the field"] += 1
+                    elif wicket_type == "retired out":
+                        export["retired out"] += 1
+                    elif wicket_type == "handled the ball":
+                        export["handled the ball"] += 1
+                    elif wicket_type == "hit the ball twice":
+                        export["hit the ball twice"] += 1
+        export_dict(export)
+
+
+def get_players_overall(info_data):
+    players = []
+    for i in list(info_data.get("players", {}).values()):
+        for player in i:
+            players.append(player)
+    return players
+
+def generate_overall(file_path):
+    info_data, innings_data = import_data_overall(file_path)
+
+    player_ids = info_data["registry"]["people"]
+
+    team_split = info_data["players"]
+    players_in_match = get_players_overall(info_data)
+
+    match_attributes_parsed = parse_info_data(info_data)
+    parse_innings_data_overall(innings_data, players_in_match, match_attributes_parsed, player_ids, info_data)
+
+
+def mw_overall_generator():
+    ignore_files = [".", "..", ".DS_Store", "README.txt"]
+
+    total_files = len(os.listdir(stored_dir))
+    files_done = 0
+    for file in os.listdir(stored_dir):
+        files_done += 1
+        print(f"Processing file {files_done}/{total_files}")
+        print("File: ", file)
+        if file not in ignore_files:
+            generate_overall(stored_dir + file)
+    return 1
+
 
 #################################
 # FILE FIND: adding_names.py
@@ -524,12 +688,11 @@ def get_player_details(cricinfo_id, total_players):
             team_links = teams_section.find_all('a', class_="ds-flex ds-items-center ds-space-x-4")
             for team_link in team_links:
                 title = team_link.get('title', '')
-                team_name = title.split("'s ", 1)[1].strip()  # Get the part after "'s "
+                team_name = title.split("'s ", 1)[1].strip()
                 if team_name.endswith(" team profile"):
                     team_name = team_name[:-13]
                 if team_name:
                     teams.append(team_name)
-        # Update progress counter safely
         with counter_lock:
             counter += 1
             print(f"Progress: {counter}/{total_players} players processed.")
@@ -588,11 +751,6 @@ def adding_names():
     final_csv_path = this_file_dir + "../data/interim/mw_pw.csv"
     global total_players 
     total_players = len(people_csv_adding_names)
-    # scraped_data = run_scraper_parallel(people_csv_adding_names, max_workers=30)  # Adjust max_workers based on your machine’s capability
-
-# Convert results to a DataFrame
-    # scraped_df = pd.DataFrame(scraped_data, columns=["key_cricinfo", "full_name", "batting_style", "bowling_style", "playing_role", "teams"])
-    # final_data = people_csv_adding_names.merge(scraped_df, on='key_cricinfo', how='left')
 
 
 
@@ -1028,8 +1186,8 @@ def download_and_preprocess():
     
     rename_date()
     
-    print("Running matchwise_data_generator()")
-    matchwise_data_generator() # mw_overall.py
+    # print("Running matchwise_data_generator()")
+    # matchwise_data_generator()
 
     print("Running aggregate()")
     aggregate()
@@ -1042,8 +1200,3 @@ def download_and_preprocess():
 
 
 download_and_preprocess()
-# json_generator()
-# rename_date()
-# matchwise_data_generator()
-# aggregate()
-# adding_names()
