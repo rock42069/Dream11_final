@@ -1186,8 +1186,8 @@ def download_and_preprocess():
     
     rename_date()
     
-    # print("Running matchwise_data_generator()")
-    # matchwise_data_generator()
+    print("Running mw_overall_generator()")
+    mw_overall_generator()
 
     print("Running aggregate()")
     aggregate()
@@ -1197,6 +1197,3 @@ def download_and_preprocess():
 
     print("Running style_based_features()")
     style_based_features()
-
-
-download_and_preprocess()
