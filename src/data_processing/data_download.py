@@ -733,6 +733,276 @@ def adding_names():
 
     print("Player data updated successfully with parallel scraping.")
 
+
+#################################
+# FILE FIND: style_features.py
+#################################
+spin = [
+    'Legbreak Googly',
+    'Right arm Offbreak, Legbreak Googly',
+    'Slow Left arm Orthodox',
+    'Right arm Offbreak, Slow Left arm Orthodox',
+    'Slow Left arm Orthodox, Slow Left arm Orthodox',
+    'Slow Left arm Orthodox, Left arm Wrist spin',
+    'Right arm Offbreak',
+    'Right arm Offbreak, Legbreak',
+    'Right arm Offbreak, Slow Left arm Orthodox',
+    'Right arm Offbreak, Legbreak Googly',
+
+    ]
+
+right_fast = [
+    'Right arm Fast',
+    'Right arm Fast medium',
+    'Right arm Fast medium, Right arm Medium'
+]
+
+left_fast = [
+    'Left arm Fast',
+    'Left arm Fast medium'
+]
+
+attributes = [
+    'balls_against_spin',
+    'balls_against_right_fast',
+    'balls_against_left_fast',
+
+    'runs_against_spin',
+    'runs_against_right_fast',
+    'runs_against_left_fast',
+
+    'outs_against_spin',
+    'outs_against_right_fast',
+    'outs_against_left_fast',
+
+    'balls_against_left',
+    'balls_against_right',
+
+    'runs_conceeded_against_left',
+    'runs_conceeded_against_right',
+
+    'wickets_against_left',
+    'wickets_against_right'
+]
+
+style_features_output = this_file_dir + "../data/interim/style_based_features.csv"
+json_dir = this_file_dir + '../data/raw/cricksheet/json/'
+mw_pw_profiles_path = this_file_dir + '../data/interim/mw_pw_profiles.csv'
+
+
+
+def import_data_style(file_path):
+    with open(file_path, 'r') as file:
+        json_data = json.load(file)
+            
+    
+    info_data = json_data.get("info", {})
+    info_data["match_id"] = file_path.split("/")[-1].split(".")[0]
+    innings_data = json_data.get("innings", [])
+    
+    return info_data, innings_data
+
+
+def get_players_style(info_data):
+    players = []
+    for i in list(info_data.get("players", {}).values()):
+        for player in i:
+            players.append(player)
+    return players
+
+def prep_dicts(name_id):
+    ret = {}
+
+    for name in name_id:
+        ret[name] = {}
+        for attribute in attributes:
+            ret[name][attribute] = 0
+    return ret
+
+def get_overs(session):
+    try:
+        overs = session["overs"]
+    except:
+        overs = []
+    return overs
+
+def is_wicket(ball):
+    try:
+        wicket = ball["wickets"]
+        return True
+    except:
+        return False
+
+def export_dict_to_csv(player_data, file_path):
+    match_id = file_path.split("/")[-1].split(".")[0]
+    if not os.path.exists(style_features_output):
+        with open(style_features_output, 'w') as f:
+            f.write(f"name,match_id,")
+            for i in range(len(attributes)-1):
+                f.write(attributes[i] + ',')
+            f.write(attributes[-1] + '\n')
+
+    with open(style_features_output, 'a') as f:
+        for player in player_data:
+            f.write(f"{player},{match_id},")
+            for i in range(len(attributes)-1):
+                f.write(str(player_data[player][attributes[i]]) + ',')
+            f.write(str(player_data[player][attributes[-1]]) + '\n')
+
+
+
+def parse_innings_data_style(innings_data, players_in_match, name_id, info_data, file_path):
+    for session in innings_data:
+        player_data = prep_dicts(name_id)
+
+        overs = get_overs(session)
+        for over in overs: # levels "over" and "deliveries"
+            over_number = over["over"]
+            over_ball_list = over["deliveries"]
+            runs_in_over = 0
+            for ball in over_ball_list: # ball by ball
+                batsman = ball["batter"]
+                bowler = ball["bowler"]
+
+
+
+                bowler_id = name_id[bowler]
+                batsman_id = name_id[batsman]
+
+                batsman_style = id_batting_style[batsman_id][0]
+                bowler_style = id_bowling_style[bowler_id][0]
+
+
+                runs_scored = ball["runs"]["batter"]
+                extras = ball["runs"]["extras"]
+                runs = runs_scored + extras
+
+                if bowler_style in spin:
+                    if batsman_style == "Right hand Bat":
+                        player_data[batsman]["balls_against_spin"] += 1
+                        player_data[batsman]["runs_against_spin"] += runs
+
+                        player_data[bowler]["balls_against_right"] += 1
+                        player_data[bowler]["runs_conceeded_against_right"] += runs
+
+                        if is_wicket(ball):
+                            player_data[batsman]["outs_against_spin"] += 1
+                            player_data[bowler]["wickets_against_right"] += 1
+                    
+                    elif batsman_style == "Left hand Bat":
+                        player_data[batsman]["balls_against_spin"] += 1
+                        player_data[batsman]["runs_against_spin"] += runs
+
+                        player_data[bowler]["balls_against_left"] += 1
+                        player_data[bowler]["runs_conceeded_against_left"] += runs
+
+                        if is_wicket(ball):
+                            player_data[batsman]["outs_against_spin"] += 1
+                            player_data[bowler]["wickets_against_left"] += 1
+                
+                elif bowler_style in left_fast:
+                    if batsman_style == "Right hand Bat":
+                        player_data[batsman]["balls_against_left_fast"] += 1
+                        player_data[batsman]["runs_against_left_fast"] += runs
+
+                        player_data[bowler]["balls_against_left"] += 1
+                        player_data[bowler]["runs_conceeded_against_left"] += runs
+
+                        if is_wicket(ball):
+                            player_data[batsman]["outs_against_left_fast"] += 1
+                            player_data[bowler]["wickets_against_left"] += 1
+                    
+                    elif batsman_style == "Left hand Bat":
+                        player_data[batsman]["balls_against_left_fast"] += 1
+                        player_data[batsman]["runs_against_left_fast"] += runs
+
+                        player_data[bowler]["balls_against_right"] += 1
+                        player_data[bowler]["runs_conceeded_against_right"] += runs
+
+                        if is_wicket(ball):
+                            player_data[batsman]["outs_against_left_fast"] += 1
+                            player_data[bowler]["wickets_against_right"] += 1
+                
+                elif bowler_style in right_fast:
+                    if batsman_style == "Right hand Bat":
+                        player_data[batsman]["balls_against_right_fast"] += 1
+                        player_data[batsman]["runs_against_right_fast"] += runs
+
+                        player_data[bowler]["balls_against_right"] += 1
+                        player_data[bowler]["runs_conceeded_against_right"] += runs
+
+                        if is_wicket(ball):
+                            player_data[batsman]["outs_against_right_fast"] += 1
+                            player_data[bowler]["wickets_against_right"] += 1
+
+                    elif batsman_style == "Left hand Bat":
+                        player_data[batsman]["balls_against_right_fast"] += 1
+                        player_data[batsman]["runs_against_right_fast"] += runs
+
+                        player_data[bowler]["balls_against_left"] += 1
+                        player_data[bowler]["runs_conceeded_against_left"] += runs
+
+                        if is_wicket(ball):
+                            player_data[batsman]["outs_against_right_fast"] += 1
+                            player_data[bowler]["wickets_against_left"] += 1
+        export_dict_to_csv(player_data, file_path)
+
+def generate_style(file_path):
+    info_data, innings_data = import_data_style(file_path)
+
+    name_id = info_data['registry']['people']
+
+    players_in_match = get_players_style(info_data)
+
+    for player in players_in_match:
+        if player not in name_id:
+            name_id[player] = None
+
+    parse_innings_data_style(innings_data, players_in_match, name_id, info_data, file_path)
+
+def style_based_features():
+    ignore_files = ['.', '..', '.DS_Store', 'README.txt']
+    total_files = 0
+    files_processed = 0
+
+    global mw_pw_profiles
+    global id_batting_style
+    global id_bowling_style
+    global id_playing_role
+
+    mw_pw_profiles = pd.read_csv(mw_pw_profiles_path, index_col = False)
+
+    parent_df = mw_pw_profiles[['player_id', 'batting_style', 'bowling_style', 'playing_role']]
+    id_bowling_style = parent_df[['player_id', 'bowling_style']]
+    id_batting_style = parent_df[['player_id', 'batting_style']]
+    id_playing_role = parent_df[['player_id', 'playing_role']]
+
+    id_bowling_style.drop_duplicates(subset=['player_id'], keep='first', inplace=True)
+    id_batting_style.drop_duplicates(subset=['player_id'], keep='first', inplace=True)
+    id_playing_role.drop_duplicates(subset=['player_id'], keep='first', inplace=True)
+
+    # convert df to dict
+    id_bowling_style = id_bowling_style.set_index('player_id').T.to_dict('list')
+    id_batting_style = id_batting_style.set_index('player_id').T.to_dict('list')
+    id_playing_role = id_playing_role.set_index('player_id').T.to_dict('list')
+
+    
+
+
+    for file in os.listdir(json_dir):
+        files_processed += 1
+        print(f"Processing file {files_processed}/{total_files}")
+        print(f"File: {file}")
+        if file not in ignore_files:
+            generate_style(json_dir + file)
+
+    df = pd.read_csv(style_features_output, index_col = False)
+    df = df.groupby(['match_id', 'name']).sum()
+    os.remove(style_features_output)
+    df.to_csv(style_features_output)
+    return 1
+
+
 def download_and_preprocess():
     
     print("Running execute_scraper()")
@@ -752,8 +1022,11 @@ def download_and_preprocess():
     print("Running adding_names()")
     adding_names()
 
+    print("Running style_based_features()")
+    style_based_features()
 
 
+# download_and_preprocess()
 # json_generator()
 # rename_date()
 # matchwise_data_generator()
