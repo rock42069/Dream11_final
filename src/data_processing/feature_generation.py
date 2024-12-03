@@ -34,6 +34,7 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 file_path_mw_pw = os.path.abspath(os.path.join(current_dir, "..", "..","src", "data", "interim", "mw_pw_profiles.csv"))
 file_path_mw_overall = os.path.abspath(os.path.join(current_dir, "..", "..","src", "data", "interim", "mw_overall.csv"))
 
+
 def calculate_fantasy_scores(df):
     df['fantasy_score_batting'] = 0
     df['fantasy_score_bowling'] = 0
@@ -366,8 +367,7 @@ def rolling_dot_balls_features(group, n1=3, n2=7, n3=12):
         group[name] = (group['dot_balls_as_bowler'].shift().rolling(n, min_periods=min_periods).sum() / balls)*100
 
         return group
-
-    # Calculate metrics for each window size
+    
     group = calculate_rolling_metrics(group, n1,1,'dot_ball_percentage_n1')
     group = calculate_rolling_metrics(group, n2,3,'dot_ball_percentage_n2')
     group = calculate_rolling_metrics(group, n3,5,'dot_ball_percentage_n3')
@@ -397,19 +397,16 @@ def calculate_rolling_batting_stats_test(group, n1=3, n2=7, n3=12,min_balls=20):
     """Calculate batting averages, strike rates, and boundary percentages using a rolling window."""
     group = group.sort_values('start_date')
     
-    # Compute rolling aggregates
     runs_n1 = group['runs_scored'].shift().rolling(n1, min_periods=1).sum()
     balls_n1 = group['balls_faced'].shift().rolling(n1, min_periods=1).sum()
     player_out_n1 = group['player_out'].shift().rolling(n1, min_periods=1).sum()
     boundary_runs_n1 = (group['fours_scored'].shift().rolling(n1, min_periods=1).sum() * 4 +
                         group['sixes_scored'].shift().rolling(n1, min_periods=1).sum() * 6)
 
-    # Apply conditional logic based on minimum balls faced
     group['batting_average_n1'] = runs_n1 / player_out_n1.replace(0, np.nan)
     group['strike_rate_n1'] = np.where(balls_n1 >= min_balls, (runs_n1 / balls_n1) * 100, np.nan)
     group['boundary_percentage_n1'] = np.where(runs_n1 > 0, (boundary_runs_n1 / runs_n1) * 100, np.nan)
 
-    # Repeat for n2
     runs_n2 = group['runs_scored'].shift().rolling(n2, min_periods=3).sum()
     balls_n2 = group['balls_faced'].shift().rolling(n2, min_periods=3).sum()
     player_out_n2 = group['player_out'].shift().rolling(n2, min_periods=3).sum()
@@ -420,7 +417,6 @@ def calculate_rolling_batting_stats_test(group, n1=3, n2=7, n3=12,min_balls=20):
     group['strike_rate_n2'] = np.where(balls_n2 >= min_balls, (runs_n2 / balls_n2) * 100, np.nan)
     group['boundary_percentage_n2'] = np.where(runs_n2 > 0, (boundary_runs_n2 / runs_n2) * 100, np.nan)
 
-    # Repeat for n3
     runs_n3 = group['runs_scored'].shift().rolling(n3, min_periods=5).sum()
     balls_n3 = group['balls_faced'].shift().rolling(n3, min_periods=5).sum()
     player_out_n3 = group['player_out'].shift().rolling(n3, min_periods=5).sum()
@@ -439,7 +435,6 @@ def calculate_rolling_bowling_stats_test(group, n1=3, n2=7, n3=12):
     """
     group = group.sort_values('start_date')
 
-    # Rolling aggregates for n1
     runs_n1 = group['runs_conceded'].shift().rolling(n1, min_periods=1).sum()
     wickets_n1 = group['wickets_taken'].shift().rolling(n1, min_periods=1).sum()
     balls_n1 = group['balls_bowled'].shift().rolling(n1, min_periods=1).sum()
@@ -448,7 +443,6 @@ def calculate_rolling_bowling_stats_test(group, n1=3, n2=7, n3=12):
     group['economy_rate_n1'] = runs_n1 / (balls_n1 / group['balls_per_over'].iloc[0])
     group['bowling_strike_rate_n1'] = balls_n1 / wickets_n1.replace(0, np.nan)
 
-    # Rolling aggregates for n2
     runs_n2 = group['runs_conceded'].shift().rolling(n2, min_periods=3).sum()
     wickets_n2 = group['wickets_taken'].shift().rolling(n2, min_periods=3).sum()
     balls_n2 = group['balls_bowled'].shift().rolling(n2, min_periods=3).sum()
@@ -457,7 +451,6 @@ def calculate_rolling_bowling_stats_test(group, n1=3, n2=7, n3=12):
     group['economy_rate_n2'] = runs_n2 / (balls_n2 / group['balls_per_over'].iloc[0])
     group['bowling_strike_rate_n2'] = balls_n2 / wickets_n2.replace(0, np.nan)
 
-    # Rolling aggregates for n3
     runs_n3 = group['runs_conceded'].shift().rolling(n3, min_periods=5).sum()
     wickets_n3 = group['wickets_taken'].shift().rolling(n3, min_periods=5).sum()
     balls_n3 = group['balls_bowled'].shift().rolling(n3, min_periods=5).sum()
@@ -466,21 +459,17 @@ def calculate_rolling_bowling_stats_test(group, n1=3, n2=7, n3=12):
     group['economy_rate_n3'] = runs_n3 / (balls_n3 / group['balls_per_over'].iloc[0])
     group['bowling_strike_rate_n3'] = balls_n3 / wickets_n3.replace(0, np.nan)
 
-    # Updated CBR formula
     def calculate_cbr(avg, econ, sr):
-        # Normalize and handle extreme values
         avg = np.where(avg > 0, np.log1p(avg), np.inf)
         econ = np.where(econ > 0, np.log1p(econ), np.inf)
         sr = np.where(sr > 0, np.log1p(sr), np.inf)
 
-        # Compute CBR: Simplified and robust
         return (avg * econ * sr) / (avg + econ + sr)
 
     group['CBR'] = calculate_cbr(
         group['bowling_average_n2'], group['economy_rate_n2'], group['bowling_strike_rate_n2']
     )
 
-    # Fielding points
     group['fielding_points'] = (
         group['catches_taken'].shift().rolling(n3, min_periods=5).sum() * 8 +
         group['stumpings_done'].shift().rolling(n3, min_periods=5).sum() * 12 +
@@ -509,8 +498,6 @@ def calculate_additional_stats(group, n1=3,n2=7,n3=12):
     group[f'total_overs_throwed_n2'] = (group['balls_bowled'].shift() / group['balls_per_over']).rolling(n2, min_periods=3).sum()
     group[f'total_overs_throwed_n3'] = (group['balls_bowled'].shift() / group['balls_per_over']).rolling(n3, min_periods=5).sum()
     
-
-    # Shift the values down by 1 to exclude the current match, then calculate the cumulative max
     group['highest_runs'] = group['runs_scored'].shift().expanding(min_periods=1).max()
     group['highest_wickets'] = group['wickets_taken'].shift().expanding(min_periods=1).max()
 
@@ -522,14 +509,15 @@ def calculate_additional_stats(group, n1=3,n2=7,n3=12):
 
 def calculate_rolling_fantasy_score(group):
     """Calculate the rolling average of fantasy scores."""
-    # group['avg_fantasy_score_1'] = group['fantasy_score_total'].shift().rolling(1, min_periods=1).mean()
     group['avg_fantasy_score_3'] = group['fantasy_score_total'].shift().rolling(3, min_periods=1).mean()
     group['avg_fantasy_score_5'] = group['fantasy_score_total'].shift().rolling(5, min_periods=2).mean()
     group['avg_fantasy_score_7'] = group['fantasy_score_total'].shift().rolling(7, min_periods=3).mean()
     group['avg_fantasy_score_12'] = group['fantasy_score_total'].shift().rolling(12, min_periods=4).mean()
     group['avg_fantasy_score_15'] = group['fantasy_score_total'].shift().rolling(15, min_periods=5).mean()
     group['avg_fantasy_score_25'] = group['fantasy_score_total'].shift().rolling(25, min_periods=6).mean()
+
     return group
+
 def calculate_rolling_ducks(group, n1=3,n2=7,n3=12):
     """Calculate the rolling sum of ducks (runs_scored == 0 and player_out == 1) over the last n matches."""
     group['ducks'] = ((group['runs_scored'] == 0) & (group['player_out'] == 1)).astype(int)
@@ -562,23 +550,19 @@ def calculate_alpha_batsmen_score(group, n1=3, n2=7, n3=12):
         group[f'avg_centuries_n{i+1}'] = group['centuries_cumsum'].shift().rolling(n, min_periods=i+1).sum()
         group[f'avg_rolling_ducks_n{i+1}'] = group[f'rolling_ducks_n{i+1}'].shift().rolling(n, min_periods=i+1).sum()
 
-    # Replace NaN values with 0 before calculating the α_batsmen_score
     group.fillna(0, inplace=True)
 
-    # Calculate the α_batsmen_score for each time horizon
     for i,n in enumerate([n1, n2, n3]):
         group[f'α_batsmen_score_n{i+1}'] = (
-        0.25 * group[f'avg_runs_scored_n{i+1}'] +        # Runs scored (core contribution)
+        0.25 * group[f'avg_runs_scored_n{i+1}'] +       # Runs scored (core contribution)
         0.20 * group[f'avg_strike_rate_n{i+1}'] +       # Emphasis on strike rate (impact metric)
         0.30 * group[f'avg_half_centuries_n{i+1}'] +    # Rewards for scoring milestones
         0.15 * group[f'avg_sixes_n{i+1}'] +             # Separate bonus for six-hitting
         0.10 * group[f'avg_fours_n{i+1}'] -             # Lower weight for fours
-        2.0 * group[f'avg_rolling_ducks_n{i+1}']       # Reduced penalty for ducks
-        )
+        2.0 * group[f'avg_rolling_ducks_n{i+1}']        # Reduced penalty for ducks
+    )
 
     return group
-
-
 
 def calculate_alpha_bowler_score(group, n1=3, n2=7, n3=12):
     """
@@ -618,7 +602,6 @@ def assign_rating_score(group,n1=3,n2=7,n3=12):
     Returns:
     - group: DataFrame with 'batsman_rating' and 'bowler_rating' added.
     """
-    # Define batsman rating ranges
     batsman_ranges = {
         (0, 5): 0,
         (5, 15): 4,
@@ -629,7 +612,6 @@ def assign_rating_score(group,n1=3,n2=7,n3=12):
         (55, float('inf')): 81
     }
 
-    # Define bowler rating ranges
     bowler_ranges = {
         (0, 1): 0,
         (1, 5): 9,
@@ -641,14 +623,12 @@ def assign_rating_score(group,n1=3,n2=7,n3=12):
         (20, float('inf')): 100
     }
 
-    # Helper function to assign rating based on ranges
     def get_rating(score, ranges):
         for (lower, upper), rating in ranges.items():
             if lower <= score < upper:
                 return rating
-        return 0  # Default in case no range matches
+        return 0
 
-    # Apply batsman and bowler ratings
     group[f'batsman_rating_n1'] = group[f'α_batsmen_score_n1'].apply(lambda x: get_rating(x, batsman_ranges))
     group[f'batsman_rating_n2'] = group[f'α_batsmen_score_n2'].apply(lambda x: get_rating(x, batsman_ranges))
     group[f'batsman_rating_n3'] = group[f'α_batsmen_score_n3'].apply(lambda x: get_rating(x, batsman_ranges))
@@ -663,9 +643,6 @@ def longtermfeatures(group):
     """Calculate long-term career features for batting and bowling."""
     group = group.sort_values('start_date')
 
-    # Batting features
-    # group['longterm_total_centuries'] = group['runs_scored'].shift().expanding().apply(calculate_centuries)
-    # group['longterm_total_half_centuries'] = group['runs_scored'].shift().expanding().apply(calculate_half_centuries)
     group['longterm_avg_runs'] = group['runs_scored'].shift().expanding().mean()
     group['longterm_var_runs'] = np.sqrt(group['runs_scored'].shift().expanding().var())
     group['longterm_avg_strike_rate'] = (
@@ -673,7 +650,6 @@ def longtermfeatures(group):
         (group['balls_faced'].shift().expanding().sum()) * 100
     )
 
-    # Bowling features
     group['longterm_avg_wickets_per_match'] = group['wickets_taken'].shift().expanding().mean()
     group['longterm_var_wickets_per_match'] = np.sqrt(group['wickets_taken'].shift().expanding().var())
     group['longterm_avg_economy_rate'] = (
@@ -682,12 +658,15 @@ def longtermfeatures(group):
     )
 
     return group
+
 def order_seen(group):
     group['order_seen_mode'] = group['order_seen'].shift().expanding().apply(lambda x: x.mode()[0] if len(x.mode()) > 0 else 0)
     return group
+
 def year(group):
     group['year'] = group['start_date'].dt.year
     return group
+
 def calculate_30s(runs_scored):
     """Calculate the total number of 30s."""
     return ((runs_scored >= 30) & (runs_scored < 50)).sum()
@@ -698,6 +677,7 @@ def run_30_to_50(group):
     group['cumulative_30s'] = group['runs_scored'].shift().expanding(min_periods=1).apply(calculate_30s)
     group['conversion_30_to_50'] = group.apply(lambda x: (x['half_centuries_cumsum'] / x['cumulative_30s']) if x['cumulative_30s'] != 0 else 0, axis=1)
     return group
+
 def preprocess_before_merge(data1,data2):
     """
     Preprocesses the dataframes before merging them.
@@ -808,12 +788,11 @@ class FeatureGeneration:
         """
         self.mw_overall = mw_overall
         self.mw_pw_profile = mw_pw_profile
-        self._is_preprocessed = False  # Flag to check if preprocessing has been done
+        self._is_preprocessed = False
 
 
         self.match_type = match_type
 
-        # Map match types to the appropriate functions
         self.HelperFunctions = {
             "ODI": {'match_type_data':get_ODI_data,'calculate_rolling_batting_stats':calculate_rolling_batting_stats_test,'calculate_rolling_bowling_stats':calculate_rolling_bowling_stats_test},
             "T20": {'match_type_data':get_T20_data,'calculate_rolling_batting_stats':calculate_rolling_batting_stats_test,'calculate_rolling_bowling_stats':calculate_rolling_bowling_stats_test},
@@ -868,15 +847,12 @@ class FeatureGeneration:
         Returns:
         pd.DataFrame: Updated mw_pw_profile with 'country_ground' and 'home_away' columns.
         """
-        # Ensure preprocessing is done
         self._ensure_preprocessed()
 
-        # Initialize geonamescache and create city-to-country mapping
         gc = geonamescache.GeonamesCache()
         cities = gc.get_cities()
         city_to_countrycode = {info['name']: info['countrycode'] for code, info in cities.items()}
 
-        # Function to map city to country
         def get_country(city_name):
             country_code = city_to_countrycode.get(city_name)
             if not country_code:
@@ -884,16 +860,12 @@ class FeatureGeneration:
             country = pycountry.countries.get(alpha_2=country_code)
             return country.name if country else "Unknown Country"
 
-        # Map city names in mw_overall to country names
         self.mw_overall['country_ground'] = self.mw_overall['city'].apply(get_country)
 
-        # Create a dictionary mapping match_id to country_ground
         match_id_to_country = self.mw_overall.set_index('match_id')['country_ground'].to_dict()
 
-        # Map match_id in mw_pw_profile to country_ground
         self.mw_pw_profile['country_ground'] = self.mw_pw_profile['match_id'].map(match_id_to_country)
 
-        # Define the homeaway function
         def homeaway(country_of_player, country_venue):
             if country_venue == 'Unknown Country':
                 return 'neutral'
@@ -901,7 +873,7 @@ class FeatureGeneration:
                 return 'home'
             else:
                 return 'away'
-        # Determine home/away status for each row in mw_pw_profile with a progress bar
+
         self.mw_pw_profile['home_away'] = self.mw_pw_profile.apply(
             lambda row: homeaway(row['player_team'], row['country_ground']), axis=1
         )
@@ -1253,8 +1225,10 @@ class FeatureGeneration:
                             'order_seen_mode', f'rolling_ducks_n1', f'rolling_maidens_n1', 
                             f'rolling_ducks_n2', f'rolling_maidens_n2', f'rolling_ducks_n3', f'rolling_maidens_n3',
                             'longterm_avg_strike_rate', 'longterm_avg_wickets_per_match', 'longterm_var_wickets_per_match', 
-                            'longterm_avg_economy_rate', 'avg_fantasy_score_3', 'avg_fantasy_score_5','avg_fantasy_score_7', 'avg_fantasy_score_12','avg_fantasy_score_15','avg_fantasy_score_25',
-                            f'batsman_rating_n1', f'bowler_rating_n1',f'batsman_rating_n2', f'bowler_rating_n2',f'batsman_rating_n3', f'bowler_rating_n3',
+                            'longterm_avg_economy_rate', 'avg_fantasy_score_3', 'avg_fantasy_score_5','avg_fantasy_score_7', 
+                            'avg_fantasy_score_12', 'avg_fantasy_score_15','avg_fantasy_score_25',
+                            f'batsman_rating_n1', f'bowler_rating_n1',f'batsman_rating_n2', f'bowler_rating_n2',
+                            f'batsman_rating_n3', f'bowler_rating_n3',
                             f'α_batsmen_score_n1', f'α_batsmen_score_n2', f'α_batsmen_score_n3', 
                             f'α_bowler_score_n1', f'α_bowler_score_n2', f'α_bowler_score_n3',
                             'year','conversion_30_to_50']])
@@ -1429,9 +1403,6 @@ class FeatureGeneration:
 
         self.mw_pw_profile=df
 
-
-##############################
-
     def calculate_match_level_venue_stats(self, lower_param=4.5,upper_param=7):
         # Ensure only the first date is used if dates contain multiple entries
         df = self.mw_overall
@@ -1452,7 +1423,6 @@ class FeatureGeneration:
 
         # Rolling calculation function
         def rolling_stats(group):
-        # Total number of balls per match type
             balls_per_inning = 120 if group['match_type'].iloc[0] == 'T20' else 300
 
         # Calculate the row number within each group to determine the number of innings processed
@@ -1506,7 +1476,6 @@ class FeatureGeneration:
         match_stats.drop(columns=['dates','venue','match_type'], inplace=True)
         self.mw_pw_profile = self.mw_pw_profile.merge(match_stats, on='match_id', how='left')
 
-#############################
     def calculate_matches_played_before(self):
         df = self.mw_pw_profile
 
@@ -1617,10 +1586,6 @@ class FeatureGeneration:
                     ((opponent_group['bowler'] == 0) & (opponent_group['batter'] == 1))
                 ]['avg_batter_fantasy_score_5'].mean()
             elif batter_only:
-                # avg_opponent_score = opponent_group[
-                #     ((opponent_group['bowler'] == 1) & (opponent_group['batter'] == 1)) | 
-                #     ((opponent_group['bowler'] == 1) & (opponent_group['batter'] == 0))
-                # ]['avg_bowler_fantasy_score_5'].mean()
                 filtered_group = opponent_group[
                     ((opponent_group['bowler'] == 1) & (opponent_group['batter'] == 1)) | 
                     ((opponent_group['bowler'] == 1) & (opponent_group['batter'] == 0))
@@ -1643,8 +1608,6 @@ class FeatureGeneration:
             group['avg_of_opponent'] = avg_opponent_score
             feature_data.append(group)
 
-        # Combine all groups back into a single DataFrame
-        # return feature_data
         result_df = pd.concat(feature_data)
         result_df = result_df.reset_index(drop=True)
 
@@ -1710,17 +1673,14 @@ class FeatureGeneration:
             Returns:
             - pd.Series: A series containing the target-encoded values.
             """
-            # Calculate the global mean of the target
             global_mean = df[target].mean()
             
-            # Group by the column to calculate group-specific means and counts
             agg = df.groupby(column)[target].agg(['mean', 'count'])
             
             # Compute the smoothed target mean
             smoothing_factor = 1 / (1 + np.exp(-(agg['count'] - 1) / smoothing))
             agg['smoothed_mean'] = global_mean * (1 - smoothing_factor) + agg['mean'] * smoothing_factor
             
-            # Map the smoothed means back to the original column
             encoded_series = df[column].map(agg['smoothed_mean'])
             
             return encoded_series
@@ -1840,8 +1800,6 @@ class FeatureGeneration:
         self.sena_sub_countries()
         self.calculate_match_level_venue_stats()
         self.calculate_matches_played_before()
-        # self.calculate_rolling_fantasy_scores_batter_and_bowler()
-        # self.avg_of_opponent()
         self.player_features_dot_balls()
         self.get_role_factor()
         self.calculate_rolling_gini_and_caa_with_original_data()
