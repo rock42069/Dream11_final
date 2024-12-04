@@ -47,6 +47,10 @@ def preprocess_t20(X):
     # X= one_hot_encode(X,'bowling_style')
     # X= one_hot_encode(X,'batting_style')
     X= one_hot_encode_t20(X,'gender')
+    if 'gender_male' not in X.columns:
+        X['gender_male'] = 0
+    if 'gender_female' not in X.columns:
+        X['gender_female'] = 0
     # X=X.fillna(0)
     #drop categorical columns
     cols=['bowling_average_n1',
@@ -103,7 +107,7 @@ def predict_scores_t20(trained_models, X_test):
     test_data = pd.DataFrame()
 
     # Loop through each model to predict scores
-    for model_name, model_info in trained_models.items():
+    for model_name,model_info in trained_models.items():
         model = model_info['model']  # Extract the trained model
         pred_scores = model.predict(X_test)  # Predict the scores
 
@@ -408,92 +412,82 @@ def generate_predictions_t20(test_df):
     predictions = predictions.to_dict(orient='records')
     return predictions
 
-
-
 def main(match_type, player_list, match_date):
     match_type = match_type.upper()
-    final_training_file_ODI = pd.read_csv(os.path.abspath(os.path.join(current_dir, "src","data","processed", "final_training_file_ODI.csv")), index_col=False)
-    final_training_file_TEST = pd.read_csv(os.path.abspath(os.path.join(current_dir, "src","data","processed", "final_training_file_test.csv")),index_col=False)
-    final_training_file_T20 = pd.read_csv(os.path.abspath(os.path.join(current_dir, "src","data","processed", "final_training_file_t20.csv")),index_col=False)
-
-    if(match_type=='ODI' or match_type=='ODM'):
-
-        testing_data = pd.DataFrame()
-
-        for player_id in player_list:   
-            filtered_data = final_training_file_ODI[final_training_file_ODI['start_date'] < match_date]
-            recent_entry = filtered_data[filtered_data['player_id'] == player_id].sort_values(by='start_date', ascending=False).groupby('player_id').first().reset_index()
-            
-            if recent_entry.empty:
-               recent_entry = pd.DataFrame([len(final_training_file_ODI.columns)*[0]], columns=final_training_file_ODI.columns)
-               recent_entry['player_id'] = player_id
-
-            
-            testing_data = pd.concat([testing_data, recent_entry], axis=0) 
-        testing_data.to_csv('testing_data.csv')
-        odi_scores = generate_predictions_odi(testing_data)
-        return odi_scores
+    base_path = os.path.abspath(os.path.join(current_dir, "src", "data", "processed"))
     
-    elif(match_type=='TEST' or match_type=='MDM'):
-
-        testing_data = pd.DataFrame()
-
-        for player_id in player_list:
-            filtered_data = final_training_file_TEST[final_training_file_TEST['start_date'] < match_date]
-            recent_entry = filtered_data[filtered_data['player_id'] == player_id].sort_values(by='start_date', ascending=False).groupby('player_id').first().reset_index()
-            
-            if recent_entry.empty:
-                recent_entry = pd.DataFrame([len(final_training_file_TEST.columns)*[0]], columns=final_training_file_TEST.columns)
-                recent_entry['player_id'] = player_id
-
-            
-            testing_data = pd.concat([testing_data, recent_entry], axis=0)
-
-        test_scores = generate_predictions_test(testing_data)
-        return test_scores
+    # Load files dynamically based on match type
+    training_files = {
+        "ODI": "final_training_file_ODI.csv",
+        "TEST": "final_training_file_test.csv",
+        "T20": "final_training_file_t20.csv"
+    }
     
-    elif(match_type=='T20' or match_type=='IT20'):
+    # Load relevant training file
+    training_file = pd.read_csv(os.path.join(base_path, training_files.get(match_type, "")), index_col=False)
+    if training_file.empty:
+        raise ValueError(f"No training file found for match type: {match_type}")
+    
+    testing_data = pd.DataFrame()
+    
+    # Filter data and generate testing data
+    filtered_data = training_file[training_file['start_date'] < match_date]
+    for player_id in player_list:
+        if not isinstance(player_id, (int, str)):
+            raise ValueError(f"Unexpected player_id type: {type(player_id)}")
+        
+        player_data = filtered_data[filtered_data['player_id'] == player_id] \
+            .sort_values(by='start_date', ascending=False) \
+            .groupby('player_id') \
+            .first() \
+            .reset_index()
+        
+        if player_data.empty:
+            player_data = pd.DataFrame([len(training_file.columns) * [0]], columns=training_file.columns)
+            player_data['player_id'] = player_id
+            player_data['is_placeholder'] = True
+        else:
+            player_data['is_placeholder'] = False
+        
+        testing_data = pd.concat([testing_data, player_data], axis=0)
 
-        testing_data = pd.DataFrame()
+    # Generate predictions
+    if match_type in ['ODI', 'ODM']:
+        return generate_predictions_odi(testing_data)
+    elif match_type in ['TEST', 'MDM']:
+        return generate_predictions_test(testing_data)
+    elif match_type in ['T20', 'IT20']:
+        return generate_predictions_t20(testing_data)
+    else:
+        raise ValueError(f"Unsupported match type: {match_type}")
 
-        for player_id in player_list:
-            filtered_data = final_training_file_T20[final_training_file_T20['start_date'] < match_date]
-            recent_entry = filtered_data[filtered_data['player_id'] == player_id].sort_values(by='start_date', ascending=False).groupby('player_id').first().reset_index()
-            if recent_entry.empty:
-               recent_entry = pd.DataFrame([len(final_training_file_T20.columns)*[0]], columns=final_training_file_T20.columns)
-               recent_entry['player_id'] = player_id
-
-            testing_data = pd.concat([testing_data, recent_entry], axis=0)
-
-        t20_scores = generate_predictions_t20(testing_data)
-        return t20_scores
-     
 player_list = [
-    "f44af07f",
-    "8b5b6769",
-    "ddc0828d",
-    "a4af4849",
-    "0184dc35",
-    "e68dd455",
-    "8ba8195d",
-    "725529bc",
-    "bad31fac",
-    "6e1b1ec0",
-    "f76ffa81",
-    "d2c2b2d5",
-    "d1d0b5ed",
-    "8fb88ee3",
-    "dc0f5506",
-    "96d3958e",
-    "0c2730df",
-    "2975a46c",
-    "de8cce37",
-    "ea42ddb9",
-    "b6cd714f",
-    "4bd33839"
-]
-match_date = "2010-12-19"
-match_type = "odi"
+        "0d56e9a5",
+        "201fef33",
+        "2904b4b6",
+        "33946d69",
+        "4cf8708b",
+        "53bb50f0",
+        "53cd8da6",
+        "5d2eda89",
+        "721e0199",
+        "7298db76",
+        "72c9ad99",
+        "77143581",
+        "821d7d46",
+        "86fdf668",
+        "9ff1e91e",
+        "a4dcac97",
+        "c981d3c2",
+        "cb08b611",
+        "d8f59089",
+        "ea9c54de",
+        "eadc8924",
+        "ed840f44"
+    ]
+match_type = "T20"
+match_date = "2024-10-06"
+
 scores = main(match_type, player_list, match_date)
 with open('scores.txt', 'w') as f:
     for score in scores:

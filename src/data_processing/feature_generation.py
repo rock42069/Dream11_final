@@ -3,37 +3,14 @@ import numpy as np
 import geonamescache
 import pycountry
 import os
-from typing import final
-from unittest.mock import inplace
 import pandas as pd
 import numpy as np
-from sklearn.metrics import top_k_accuracy_score
-from sklearn.model_selection import train_test_split
-from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
-from xgboost import XGBClassifier, XGBRegressor
-from sklearn.tree import DecisionTreeRegressor
-from sklearn.linear_model import LinearRegression, Ridge, Lasso, ElasticNet
-from lightgbm import LGBMClassifier
-from sklearn.ensemble import AdaBoostRegressor
-from catboost import CatBoostRegressor
 from sklearn.preprocessing import LabelEncoder
-from sklearn.feature_selection import RFE
-import time
-import shap
-import xgboost as xgb
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.linear_model import LogisticRegression
-from sklearn.svm import SVC
-from xgboost import XGBClassifier
-from catboost import CatBoostClassifier
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.decomposition import PCA
 import os
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 file_path_mw_pw = os.path.abspath(os.path.join(current_dir, "..", "..","src", "data", "interim", "mw_pw_profiles.csv"))
 file_path_mw_overall = os.path.abspath(os.path.join(current_dir, "..", "..","src", "data", "interim", "mw_overall.csv"))
-
 
 def calculate_fantasy_scores(df):
     df['fantasy_score_batting'] = 0
@@ -1933,7 +1910,7 @@ class FeatureEngineering_t20:
         group['runs_n2'] = self.calculate_ema(group['runs_conceded'].shift(), n2)
         group['wickets_n2'] = self.calculate_ema(group['wickets_taken'].shift(), n2)
         group['balls_n2'] = self.calculate_ema(group['balls_bowled'].shift(), n2)
-        group['bowling_average_n2'] = group['runs_n2'] / group['wickiets_n2'].replace(0, np.nan)
+        group['bowling_average_n2'] = group['runs_n2'] / group['wickets_n2'].replace(0, np.nan)
         group['economy_rate_n2'] = group['runs_n2'] / (group['balls_n2'] / 6)
         group['bowling_strike_rate_n2'] = group['balls_n2'] / group['wickets_n2'].replace(0, np.nan)
         group['runs_n3'] = self.calculate_ema(group['runs_conceded'].shift(), n3)
