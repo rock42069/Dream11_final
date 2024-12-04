@@ -3,11 +3,7 @@ import numpy as np
 import geonamescache
 import pycountry
 import os
-import pandas as pd
-import numpy as np
 from sklearn.preprocessing import LabelEncoder
-import os
-
 current_dir = os.path.dirname(os.path.abspath(__file__))
 file_path_mw_pw = os.path.abspath(os.path.join(current_dir, "..", "..","src", "data", "interim", "mw_pw_profiles.csv"))
 file_path_mw_overall = os.path.abspath(os.path.join(current_dir, "..", "..","src", "data", "interim", "mw_overall.csv"))
@@ -1761,7 +1757,28 @@ class FeatureGeneration:
 
         self.mw_pw_profile = data_with_metrics
 
+    def binaryclassification(self):
+        final_df = self.mw_pw_profile
+        match_id_counts = final_df['match_id'].value_counts()
 
+        valid_match_ids = match_id_counts[match_id_counts == 22].index
+
+        # Filter the original DataFrame
+        filtered_final_df = final_df[final_df['match_id'].isin(valid_match_ids)]
+
+        # Initialize the 'selected' column with 0
+        filtered_final_df['selected'] = 0
+
+        # For each 'match_id', sort by 'fantasy_score_total' and mark the top 11 rows
+        for match_id in valid_match_ids:
+            match_rows = filtered_final_df[filtered_final_df['match_id'] == match_id]
+            top_11_indices = match_rows.sort_values(by='fantasy_score_total', ascending=False).head(11).index
+            filtered_final_df.loc[top_11_indices, 'selected'] = 1
+        
+        # Reset index if needed
+        filtered_final_df = filtered_final_df.reset_index(drop=True)
+        self.mw_pw_profile = filtered_final_df
+    
     def make_all_features(self):
         """
         Run all the feature generation methods in the class.
@@ -1780,6 +1797,7 @@ class FeatureGeneration:
         self.player_features_dot_balls()
         self.get_role_factor()
         self.calculate_rolling_gini_and_caa_with_original_data()
+        self.binaryclassification()
         self.encode_preprocess()
 
 def main_test():
@@ -2285,7 +2303,27 @@ class FeatureEngineering_t20:
 
         filtered_df = filtered_df.reset_index(drop=True)
         return filtered_df
+    def binaryclassification(self,final_df):
+        match_id_counts = final_df['match_id'].value_counts()
 
+        valid_match_ids = match_id_counts[match_id_counts == 22].index
+
+        # Filter the original DataFrame
+        filtered_final_df = final_df[final_df['match_id'].isin(valid_match_ids)]
+
+        # Initialize the 'selected' column with 0
+        filtered_final_df['selected'] = 0
+
+        # For each 'match_id', sort by 'fantasy_score_total' and mark the top 11 rows
+        for match_id in valid_match_ids:
+            match_rows = filtered_final_df[filtered_final_df['match_id'] == match_id]
+            top_11_indices = match_rows.sort_values(by='fantasy_score_total', ascending=False).head(11).index
+            filtered_final_df.loc[top_11_indices, 'selected'] = 1
+        
+        # Reset index if needed
+        filtered_final_df = filtered_final_df.reset_index(drop=True)
+        return filtered_final_df
+    
     def generate_features_t20(self):
         
         par_path = os.path.abspath(os.path.join(current_dir, "..", "..", "src", "data", "interim", "mw_pw_profiles.csv"))
@@ -2302,6 +2340,7 @@ class FeatureEngineering_t20:
             .apply(lambda x: x.shift().expanding().mean())
             .reset_index(level=[0, 1], drop=True)
         )
+        df = self.binaryclassification(df)
 
         df = self.preprocessdf(df)
         df = self.calculate_matches_played_before(df)
@@ -3250,7 +3289,7 @@ class FeatureGeneratorODI:
         df = self.binaryclassification(df)
         df = self.onehotencode(df)
 
-        out_path = os.path.abspath(os.path.join(current_dir, "..", "..", "src", "data", "processed", "final_training_file_ODI.csv"))
+        out_path = os.path.abspath(os.path.join(current_dir, "..", "..", "src", "data", "processed", "final_training_file_odi.csv"))
         df.to_csv(out_path, index=False)
 
 def main_odi():
@@ -3262,6 +3301,8 @@ def main_feature_generation():
     main_odi()
     main_t20()
     main_test()
+
+ 
 
 
 

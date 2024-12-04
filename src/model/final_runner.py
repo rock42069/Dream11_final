@@ -3,9 +3,6 @@ import os
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
-# Define paths
-
-
 def process_matches(match_type):
 
     pred_path = os.path.abspath(os.path.join(current_dir, ".." , "..","src", "data", "processed", f"predictions_{match_type}.csv"))
@@ -81,10 +78,23 @@ def process_matches(match_type):
     final_result_df.to_csv( final_path,index=False)
     return final_result_df
 
-def main_process_matches():
-    process_matches("test")
-    process_matches("odi")
-    process_matches("t20")
-
-# main_process_matches()
-
+def main_generate_csv():
+ 
+    match_types = ["test", "odi", "t20"]
+    for match_type in match_types:
+        final_training_file = os.path.abspath(os.path.join(current_dir, "..", "..", "src", "data", "processed", f"predictions_{match_type}.csv"))
+        if os.path.exists(final_training_file):
+            process_matches(match_type)
+    
+    # merge all the final_output_{match_type}.csv files if they exist
+    match_types = ["test", "odi", "t20"]
+    final_output_list = []
+    for match_type in match_types:
+        final_output_file = os.path.abspath(os.path.join(current_dir, "..", "..", "src", "data", "processed", f"final_output_{match_type}.csv"))
+        if os.path.exists(final_output_file):
+            final_output_list.append(pd.read_csv(final_output_file))
+    
+    if final_output_list:
+        final_output = pd.concat(final_output_list, ignore_index=True)
+        final_output_path = os.path.abspath(os.path.join(current_dir, "..", "..", "src", "data", "processed", "final_output.csv"))
+        final_output.to_csv(final_output_path, index=False)

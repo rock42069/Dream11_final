@@ -2,6 +2,7 @@ import os
 import pickle
 import pandas as pd
 import numpy as np
+import matplotlib.pyplot as plt
 from sklearn.linear_model import LinearRegression, Ridge, Lasso, ElasticNet, LogisticRegression
 from sklearn.ensemble import StackingRegressor
 from sklearn.neural_network import MLPRegressor
@@ -12,6 +13,8 @@ from catboost import CatBoostRegressor, CatBoostClassifier
 from xgboost import XGBRegressor, XGBClassifier
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense
+import xgboost as xgb
+import shap
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
@@ -350,12 +353,8 @@ def one_hot_encode_t20(X, column_name):
     return X
 
 def preproces_t20(X):
-    #X= one_hot_encode(X,'match_type')
-    # X= one_hot_encode(X,'playing_role')
-    # X= one_hot_encode(X,'bowling_style')
-    # X= one_hot_encode(X,'batting_style')
+
     X= one_hot_encode_t20(X,'gender')
-    # X=X.fillna(0)
     #drop categorical columns
     cols=['bowling_average_n1',
        'bowling_strike_rate_n1', 'bowling_average_n2',
@@ -404,9 +403,6 @@ def encode_playing_role_vectorized_t20(df, column='playing_role'):
     return df[['batter', 'wicketkeeper', 'bowler', 'allrounder']]
 
 def preprocessdf_t20(df):
-    # df['start_date']= df['date']
-    # df.drop('date', axis=1, inplace=True)
-    # df.drop('end_date', axis=1, inplace=True)
 
     # Convert 'start_date' and 'end_date' columns to datetime format
     df['start_date'] = pd.to_datetime(df['start_date'])
@@ -464,7 +460,24 @@ def preprocess_t20(X):
     X=X.drop(cols,axis=1)
     return X
 
- 
+def explain_model_with_shap(X_train, y_train, train_start_date, train_end_date, match_type):
+    # Train the model
+    model = LinearRegression()
+    model.fit(X_train, y_train)
+    # Create SHAP explainer
+    explainer = shap.LinearExplainer(model.predict, feature_dependence="independent")
+    shap_values = explainer.shap_values(X_train)
+    plt.figure()
+    shap.summary_plot(shap_values, X_train, max_display=5, show=False)
+    shap_plot_dir = os.path.abspath(
+        os.path.join(current_dir, "..", "data", "raw", "additional_data")
+    )
+    os.makedirs(shap_plot_dir, exist_ok=True)
+    shap_plot_path = os.path.join(shap_plot_dir, f"{match_type}_{train_start_date}_{train_end_date}_shap_summary_plot.png")
+    plt.savefig(shap_plot_path, bbox_inches="tight")
+    plt.close()
+    print(f"SHAP summary plot saved at: {shap_plot_path}")
+
 def train_and_save_model_t20(train_start_date, train_end_date):
     train_start = train_start_date.replace('-', '_')
     train_end = train_end_date.replace('-', '_')
@@ -495,28 +508,6 @@ def train_and_save_model_t20(train_start_date, train_end_date):
         'avg_fantasy_score_20', 'rolling_ducks', 'rolling_maidens','gender',
         'α_batsmen_score', 'α_bowler_score', 'batsman_rating', 'bowler_rating',
         'fantasy_score_total','longterm_total_matches_of_type','avg_against_opposition','bowling_style','selected']
-    # columns=['start_date','player_id', 'match_id', 'match_type','playing_role',
-    #     'batting_average_n1', 'strike_rate_n1', 'boundary_percentage_n1',
-    #     'batting_average_n2', 'strike_rate_n2', 'boundary_percentage_n2',
-    #     'batting_average_n3', 'strike_rate_n3', 'boundary_percentage_n3',
-    #     'centuries_cumsum', 'half_centuries_cumsum', 'avg_runs_scored',
-    #     'avg_strike_rate', 'avg_half_centuries', 'avg_centuries',
-    #     'avg_rolling_ducks', 'strike_rotation_percentage',
-    #     'avg_strike_rotation_percentage', 'conversion_30_to_50',
-    #     'economy_rate_n1', 'economy_rate_n2', 'economy_rate_n3',
-    #     'wickets_in_n_matches', 'total_overs_throwed', 'bowling_average_n1',
-    #     'bowling_strike_rate_n1', 'bowling_average_n2',
-    #     'bowling_strike_rate_n2', 'bowling_average_n3',
-    #     'bowling_strike_rate_n3', 'CBR', 'CBR2', 'fielding_points',
-    #     'four_wicket_hauls_n', 'highest_runs', 'highest_wickets',
-    #     'order_seen_mode', 'longterm_avg_runs', 'longterm_var_runs',
-    #     'longterm_avg_strike_rate', 'longterm_avg_wickets_per_match',
-    #     'longterm_var_wickets_per_match', 'longterm_avg_economy_rate',
-    #     'longterm_total_matches_of_type', 'avg_fantasy_score_1',
-    #     'avg_fantasy_score_5', 'avg_fantasy_score_10', 'avg_fantasy_score_15',
-    #     'avg_fantasy_score_20', 'rolling_ducks', 'rolling_maidens','gender',
-    #     'α_batsmen_score', 'α_bowler_score', 'batsman_rating', 'bowler_rating',
-    #     'fantasy_score_total','longterm_total_matches_of_type','bowling_style']
     df = df[columns]
     df = preproces_t20(df)
     df[['batter', 'wicketkeeper', 'bowler', 'allrounder']] = encode_playing_role_vectorized_t20(df, 'playing_role')
@@ -544,6 +535,7 @@ def train_and_save_model_t20(train_start_date, train_end_date):
     df = df.loc[shuffled_indices].reset_index(drop=True)
 
     trained_modelsrr, trained_modelscc, combined = iterative_training(X_train, y_train, X_trainc, y_trainc, df)
+    explain_model_with_shap(X_train, y_train, train_start_date, train_end_date, 't20')
 
     Xn = combined.drop(['match_id', 'player_id', 'fantasy_score_total'], axis=1)
     yn = combined['fantasy_score_total']
@@ -556,14 +548,6 @@ def train_and_save_model_t20(train_start_date, train_end_date):
             'trained_modelsrr': trained_modelsrr,
             'neural_weights': neural.get_weights()
         }, file)
-
-    # y_train = train['fantasy_score_total']
-    # train.drop(['match_type','match_id'], axis=1, inplace=True)
-    # train.fillna(0, inplace=True)
-    # numeric_X_train = train.select_dtypes(include=[np.number])
-    # trained_models = train_models_t20(numeric_X_train.drop('fantasy_score_total', axis=1), y_train)
-    # with open(model_output_path, 'wb') as file:
-    #     pickle.dump(trained_models, file)
 
 def preprocess_test(X):
     X=X.fillna(0)
@@ -617,6 +601,7 @@ def train_and_save_model_test(train_start_date, train_end_date):
     df = df.loc[shuffled_indices].reset_index(drop=True)
 
     trained_modelsrr, trained_modelscc, combined = iterative_training(X_train, y_train, X_trainc, y_trainc, df)
+    explain_model_with_shap(X_train, y_train, train_start_date, train_end_date, 'test')
 
     Xn = combined.drop(['match_id', 'player_id', 'fantasy_score_total'], axis=1)
     yn = combined['fantasy_score_total']
@@ -629,9 +614,6 @@ def train_and_save_model_test(train_start_date, train_end_date):
             'trained_modelsrr': trained_modelsrr,
             'neural_weights': neural.get_weights()
         }, file)
-    # trained_models = train_models_test(X_train, y_train)
-
-    # pickle.dump(trained_models, open(output_model_path, 'wb'))
 
 def train_and_save_model_odi(train_start_date, train_end_date):
     cols = [
@@ -658,27 +640,6 @@ def train_and_save_model_odi(train_start_date, train_end_date):
         'Pitch_Type_Bowling-Friendly', 'Pitch_Type_Neutral', 'ARPO_venue',
         'BSR_venue'
     ]
-    # cols= [
-    #    'player_id', 'match_id', 'match_type', 'start_date',
-    #    'batting_average_n1', 'strike_rate_n1', 'boundary_percentage_n1',
-    #    'batting_average_n2', 'strike_rate_n2', 'boundary_percentage_n2',
-    #    'batting_average_n3', 'strike_rate_n3', 'boundary_percentage_n3',
-    #    'centuries_cumsum', 'half_centuries_cumsum', 'avg_runs_scored',
-    #    'avg_strike_rate', 'avg_half_centuries', 'avg_centuries',
-    #    'avg_rolling_ducks', 'strike_rotation_percentage',
-    #    'avg_strike_rotation_percentage', 'conversion_30_to_50',
-    #    'economy_rate_n1', 'economy_rate_n2', 'economy_rate_n3',
-    #    'wickets_in_n_matches', 'total_overs_throwed', 'CBR', 'CBR2', 'fielding_points',
-    #    'four_wicket_hauls_n', 'highest_runs', 'highest_wickets',
-    #    'order_seen_mode', 'longterm_avg_runs', 'longterm_var_runs',
-    #    'longterm_avg_strike_rate', 'longterm_avg_wickets_per_match',
-    #    'longterm_var_wickets_per_match', 'longterm_avg_economy_rate',
-    #    'avg_fantasy_score_1', 'avg_fantasy_score_5', 'avg_fantasy_score_10', 'avg_fantasy_score_15',
-    #    'avg_fantasy_score_20', 'rolling_ducks', 'rolling_maidens',
-    #    'α_batsmen_score', 'batsman_rating', 'bowler_rating', 
-    #    'fantasy_score_total', 'bowling_style', 'selected', 
-    # 'gender_female', 'gender_male', 'dot_ball_percentage_n1', 'dot_ball_percentage_n2', 'dot_ball_percentage_n3', 'longterm_dot_ball_percentage', 'dot_ball_percentage', 'longterm_var_dot_ball_percentage',
-    #      'role_factor', 'odi_impact']
     train_start = train_start_date.replace("-", "_")
     train_end = train_end_date.replace("-", "_")
     model_output_path = os.path.abspath(os.path.join(current_dir, "..", "model_artifacts" , f"Model_UI_{train_start}-{train_end}_odi.pkl"))
@@ -712,6 +673,7 @@ def train_and_save_model_odi(train_start_date, train_end_date):
     train = train.loc[shuffled_indices].reset_index(drop=True)
 
     trained_modelsrr, trained_modelscc, combined = iterative_training(X_train, y_train, X_trainc, y_trainc, train)
+    explain_model_with_shap(X_train, y_train, train_start_date, train_end_date, 'odi')
 
     Xn = combined.drop(['match_id', 'player_id', 'fantasy_score_total'], axis=1)
     yn = combined['fantasy_score_total']
@@ -757,5 +719,3 @@ def main_train_and_save(start,end):
     train_and_save_model_test(start, end)
     train_and_save_model_t20(start, end)
     model_merge(start, end)
-
-main_train_and_save('2020-01-01', '2022-01-01')
