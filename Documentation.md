@@ -268,12 +268,47 @@ Saves the following
 - `neural_weights`: The trained weights of the neural network.
 
 
+# predict_model.py
 
+#### `predict_scores_c()`
 
+**Description**  
+Generates predicted scores for a set of test data (`X_test`) using multiple trained classification models stored in a dictionary (`trained_models`). The function ensures compatibility between models and handles exceptions during prediction. Predicted scores are returned in a new DataFrame with each model's predictions in separate columns.
+Similar structure is used for regression and 
 
+**Inputs**  
+- `trained_models`: A dictionary where keys are model names (strings) and values are dictionaries containing:
+  - `model`: The trained model object (e.g., from scikit-learn).
+  - `columns`: A list of feature names to retain in the test dataset for prediction.
+- `X_test`: The test dataset containing all potential features.
 
+**Outputs**  
+- `test_data`: A DataFrame where each column corresponds to the predicted scores for the respective model from `trained_models`. The column names are formatted as `<model_name>_predicted_score`.
 
+#### `predict_scores_odi()`
 
+**Description**  
+Generates predicted scores for a set of test data (`X_test`) using multiple trained regression models stored in a dictionary (`trained_models`). The function predicts scores using the `predict` method of each model and returns the results in a DataFrame, where each model's predictions are stored in separate columns.
 
+**Inputs**  
+- `trained_models`: A dictionary where keys are model names (strings) and values are dictionaries containing:
+  - `model`: The trained regression model object (e.g., from scikit-learn).
+  - `columns`: A list of feature names to retain in the test dataset for prediction.
+- `X_test`: The test dataset containing all potential features.
 
+**Outputs**  
+- `test_data`: A DataFrame where each column corresponds to the predicted scores for the respective model from `trained_models`. The column names are formatted as `<model_name>_predicted_score`.
 
+#### `generate_predictions_t20()`
+
+**Description**  
+Generates predictions for T20 matches using the saved pre-trained models and test data filtered by date range. It processes the input data, prepares feature vectors, and calculates predictions for each player in the dataset. Results are saved as a CSV file.
+
+**Inputs**  
+- `train_start_date`: Start date of the training period in the format YYYY-MM-DD.
+- `train_end_date`: End date of the training period in the format YYYY-MM-DD.
+- `test_start_date`: Start date of the testing period in the format YYYY-MM-DD.
+- `test_end_date`: End date of the testing period in the format YYYY-MM-DD.
+
+**Outputs**  
+- A CSV file containing predictions for T20 matches, saved to path.

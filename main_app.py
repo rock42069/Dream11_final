@@ -186,8 +186,8 @@ def main():
         st.write("Download and preprocess data, and generate features for training.")
 
         if st.button("Run Setup"):
-        #     with st.spinner("Downloading and preprocessing data..."):
-        #         download_and_preprocess()
+            with st.spinner("Downloading and preprocessing data..."):
+                download_and_preprocess()
             with st.spinner("Generating features..."):
                 main_feature_generation()
             st.session_state.setup_done = True
