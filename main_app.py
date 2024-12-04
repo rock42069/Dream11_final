@@ -17,6 +17,145 @@ from joblib import load
 
 current_dir = os.path.dirname(__file__)
 
+import os
+import pandas as pd
+import streamlit as st
+import shap
+from datetime import datetime
+from joblib import load
+import matplotlib.pyplot as plt
+
+# current_dir = os.path.dirname(__file__)
+
+# # Load SHAP explainer
+# def load_explainer(model_path):
+#     model = load(model_path)
+#     explainer = shap.Explainer(model)
+#     return explainer
+
+# # Define the main logic for the Streamlit app
+# def main():
+#     st.set_page_config(page_title="Cricket Match Prediction System", layout="wide")
+
+#     st.title("Model UI for Dream11 Score Prediction System")
+#     st.markdown("""
+#             We aim to design a state-of-the-art model that will predict the best possible 11 players taking all possible factors into account. 
+#             Our model will also be explainable so that all cricket fans can make sense of our predictions.
+#             Along with these, we aim to build an attractive and intuitive user interface that will be easy to use for all users.
+#     """)
+
+#     # Sidebar for navigation
+#     st.sidebar.title("Navigation")
+#     page = st.sidebar.radio("Go to", ["Setup", "Train Model", "Run Predictions", "Model Insights"])
+
+#     if "setup_done" not in st.session_state:
+#         st.session_state.setup_done = False
+#     if "model_trained" not in st.session_state:
+#         st.session_state.model_trained = False
+#     if "train_start_date" not in st.session_state:
+#         st.session_state.train_start_date = None
+#     if "train_end_date" not in st.session_state:
+#         st.session_state.train_end_date = None
+
+#     # Setup Page
+#     if page == "Setup":
+#         st.header("⚙️ Setup")
+#         st.write("Download and preprocess data, and generate features for training.")
+
+#         if st.button("Run Setup"):
+#             with st.spinner("Downloading and preprocessing data..."):
+#                 download_and_preprocess()
+#             with st.spinner("Generating features..."):
+#                 main_feature_generation()
+#             st.session_state.setup_done = True
+#             st.success("Setup completed successfully! ✅")
+
+#     # Train Model Page
+#     elif page == "Train Model":
+#         st.header("🏋️ Train Model")
+
+#         if not st.session_state.setup_done:
+#             st.warning("Please complete the setup first.")
+#         else:
+#             st.subheader("📅 Input Training Date Ranges")
+#             col1, col2 = st.columns(2)
+#             st.session_state.train_start_date = col1.date_input("Training Start Date", datetime(2000, 1, 1), min_value=datetime(2000, 1, 1), max_value=datetime(2024, 12, 31))
+#             st.session_state.train_end_date = col2.date_input("Training End Date", datetime(2000, 1, 1), min_value=datetime(2000, 1, 1), max_value=datetime(2024, 12, 31))
+
+#             if st.session_state.train_start_date >= st.session_state.train_end_date:
+#                 st.error("Training Start Date must be before Training End Date.")
+
+#             if st.button("Train Model"):
+#                 with st.spinner("Training models..."):
+#                     main_train_and_save(str(st.session_state.train_start_date), str(st.session_state.train_end_date))
+#                 st.session_state.model_trained = True
+#                 st.success("Model trained and saved successfully! ✅")
+
+#     # Run Predictions Page
+#     elif page == "Run Predictions":
+#         st.header("📊 Run Predictions")
+
+#         if not st.session_state.model_trained:
+#             st.warning("Please train the model first.")
+#         else:
+#             st.subheader("📅 Input Testing Date Ranges")
+#             col1, col2 = st.columns(2)
+#             test_start_date = col1.date_input("Testing Start Date", datetime(2000, 1, 1), min_value=datetime(2000, 1, 1), max_value=datetime(2024, 12, 31))
+#             test_end_date = col2.date_input("Testing End Date", datetime(2000, 1, 1), min_value=datetime(2000, 1, 1), max_value=datetime(2024, 12, 31))
+
+#             if test_start_date >= test_end_date:
+#                 st.error("Testing Start Date must be before Testing End Date.")
+
+#             if st.button("Run Predictions"):
+#                 with st.spinner("Generating predictions..."):
+#                     main_generate_predictions(str(st.session_state.train_start_date), str(st.session_state.train_end_date), str(test_start_date), str(test_end_date))
+
+#                 # Load and display the final output
+#                 final_output_path = os.path.join(current_dir, "src", "data", "processed", "final_output.csv")
+#                 if os.path.exists(final_output_path):
+#                     final_output = pd.read_csv(final_output_path)
+#                     st.success("Predictions generated successfully! ✅")
+#                     st.subheader("📜 Final Output")
+#                     st.dataframe(final_output)
+#                     st.download_button(
+#                         label="Download Final Output CSV",
+#                         data=final_output.to_csv(index=False),
+#                         file_name="final_output.csv",
+#                         mime="text/csv",
+#                     )
+
+#     # Model Insights with SHAP
+#     elif page == "Model Insights":
+#         st.header("📈 Model Insights")
+#         st.write("Explore feature importance with SHAP values for better interpretability.")
+
+#         model_path = os.path.join(current_dir, "src", "model_artifacts", "Model_UI_2000_01_01-2022_01_01.pkl")
+#         # explainer = load_explainer(model_path)
+
+#         sample_data_path = os.path.join(current_dir, "src", "data", "processed", "final_training_file_ODI.csv")
+#         sample_data = pd.read_csv(sample_data_path)
+
+#         st.write("### Sample Data Used for Predictions")
+#         st.dataframe(sample_data)
+
+#         # if st.button("Generate SHAP Summary Plot"):
+#         #     with st.spinner("Generating SHAP summary plot..."):
+#         #         shap_values = explainer(sample_data)
+#         #         fig, ax = plt.subplots(figsize=(10, 6))
+#         #         shap.summary_plot(shap_values, sample_data, show=False)
+#         #         st.pyplot(fig)
+
+#         # if st.button("Generate SHAP Dependence Plot"):
+#         #     feature = st.selectbox("Select Feature for Dependence Plot", sample_data.columns)
+#         #     with st.spinner("Generating SHAP dependence plot..."):
+#         #         fig, ax = plt.subplots(figsize=(8, 5))
+#         #         shap.dependence_plot(feature, shap_values.values, sample_data, ax=ax)
+#         #         st.pyplot(fig)
+
+# if __name__ == "__main__":
+#     main()
+
+
 # Load SHAP explainer
 def load_explainer(model_path):
     model = load(model_path)
@@ -47,14 +186,14 @@ def main():
         st.write("Download and preprocess data, and generate features for training.")
 
         if st.button("Run Setup"):
-            # with st.spinner("Downloading and preprocessing data..."):
-            #     download_and_preprocess()
+        #     with st.spinner("Downloading and preprocessing data..."):
+        #         download_and_preprocess()
             with st.spinner("Generating features..."):
                 main_feature_generation()
             st.session_state.setup_done = True
             st.success("Setup completed successfully! ✅")
 
-    # Prediction Workflow
+    # Prediction Workflows
     elif page == "Prediction Workflow":
         st.header("📊 Prediction Workflow")
 
@@ -97,8 +236,8 @@ def main():
                 final_output.to_csv(final_output_path, index=False)
 
                 # Clean up intermediate files
-                for file in ["final_output_odi.csv", "final_output_t20.csv", "final_output_test.csv", "predictions_odi.csv", "predictions_t20.csv", "predictions_test.csv"]:
-                    os.remove(os.path.join(current_dir, "src", "data", "processed", file))
+                # for file in ["final_output_odi.csv", "final_output_t20.csv", "final_output_test.csv", "predictions_odi.csv", "predictions_t20.csv", "predictions_test.csv"]:
+                #     os.remove(os.path.join(current_dir, "src", "data", "processed", file))
 
                 st.success("Prediction workflow completed! ✅")
 

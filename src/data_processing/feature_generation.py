@@ -1901,21 +1901,21 @@ class FeatureEngineering_t20:
 
     def calculate_rolling_bowling_stats_with_ema(self, group, n1, n2, n3):
         group = group.sort_values('start_date')
-        group['runs_n1'] = self.calculate_ema(group['runs_conceded'].shift(), n1)
-        group['wickets_n1'] = self.calculate_ema(group['wickets_taken'].shift(), n1)
-        group['balls_n1'] = self.calculate_ema(group['balls_bowled'].shift(), n1)
+        group['runs_n1'] = self.calculate_ema(group['runs_conceded'], n1)
+        group['wickets_n1'] = self.calculate_ema(group['wickets_taken'], n1)
+        group['balls_n1'] = self.calculate_ema(group['balls_bowled'], n1)
         group['bowling_average_n1'] = group['runs_n1'] / group['wickets_n1'].replace(0, np.nan)
         group['economy_rate_n1'] = group['runs_n1'] / (group['balls_n1'] / 6)
         group['bowling_strike_rate_n1'] = group['balls_n1'] / group['wickets_n1'].replace(0, np.nan)
-        group['runs_n2'] = self.calculate_ema(group['runs_conceded'].shift(), n2)
-        group['wickets_n2'] = self.calculate_ema(group['wickets_taken'].shift(), n2)
-        group['balls_n2'] = self.calculate_ema(group['balls_bowled'].shift(), n2)
+        group['runs_n2'] = self.calculate_ema(group['runs_conceded'], n2)
+        group['wickets_n2'] = self.calculate_ema(group['wickets_taken'], n2)
+        group['balls_n2'] = self.calculate_ema(group['balls_bowled'], n2)
         group['bowling_average_n2'] = group['runs_n2'] / group['wickets_n2'].replace(0, np.nan)
         group['economy_rate_n2'] = group['runs_n2'] / (group['balls_n2'] / 6)
         group['bowling_strike_rate_n2'] = group['balls_n2'] / group['wickets_n2'].replace(0, np.nan)
-        group['runs_n3'] = self.calculate_ema(group['runs_conceded'].shift(), n3)
-        group['wickets_n3'] = self.calculate_ema(group['wickets_taken'].shift(), n3)
-        group['balls_n3'] = self.calculate_ema(group['balls_bowled'].shift(), n3)
+        group['runs_n3'] = self.calculate_ema(group['runs_conceded'], n3)
+        group['wickets_n3'] = self.calculate_ema(group['wickets_taken'], n3)
+        group['balls_n3'] = self.calculate_ema(group['balls_bowled'], n3)
         group['bowling_average_n3'] = group['runs_n3'] / group['wickets_n3'].replace(0, np.nan)
         group['economy_rate_n3'] = group['runs_n3'] / (group['balls_n3'] / 6)
         group['bowling_strike_rate_n3'] = group['balls_n3'] / group['wickets_n3'].replace(0, np.nan)
@@ -3262,9 +3262,6 @@ def main_feature_generation():
     main_odi()
     main_t20()
     main_test()
-
-# main_feature_generation()
-
 
 
 

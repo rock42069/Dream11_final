@@ -1,3 +1,4 @@
+import shutil
 import json
 import os
 import pandas as pd
@@ -1103,10 +1104,25 @@ def style_based_features():
     return 1
 
 
+# def integrate_sample_data():
+#     # if files exist in this_file_dir + '../out_of_sample_data/'
+#     # then move them to this_file_dir + '../data/raw/cricksheet/json/'
+
+#     out_of_sample_dir = this_file_dir + '../out_of_sample_data/'
+#     cricksheet_dir = this_file_dir + '../data/raw/cricksheet/json/'
+
+#     if os.path.exists(out_of_sample_dir):
+#         for file in os.listdir(out_of_sample_dir):
+#             shutil.move(out_of_sample_dir + file, cricksheet_dir + file)
+
+
 def download_and_preprocess():
     
     print("Running execute_scraper()")
     execute_scraper()
+
+    # print("Runnning integrate sample data")
+    # integrate_sample_data()
     
     print("Running json_generator()")
     json_generator()

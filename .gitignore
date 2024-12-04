@@ -1,4 +1,7 @@
 .venv
-src/data
+src/data/raw/
+src/data/processed/
+src/data/interim/
 .vscode
 catboost_info
+src/model_artifacts/
