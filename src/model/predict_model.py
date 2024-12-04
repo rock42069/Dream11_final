@@ -253,12 +253,29 @@ def preprocessdf_t20(df):
     df = df.sort_values(by='start_date').reset_index(drop=True)
     return df
 
+
 def generate_predictions_t20(train_start_date, train_end_date, test_start_date, test_end_date):
     train_start = train_start_date.replace('-', '_')
     train_end = train_end_date.replace('-', '_')
     # # Load the trained models
     # model_path = os.path.abspath(os.path.join(current_dir, "..", "..","src", "model_artifacts",f"Model_UI_{train_start}-{train_end}_t20.pkl" ))
     combined_model_path = os.path.abspath(os.path.join(current_dir, "..", "model_artifacts", f"Model_UI_{train_start}-{train_end}.pkl"))
+    with open(combined_model_path, 'rb') as file:
+        combined_models = pickle.load(file)
+    trained_models = combined_models['t20']
+    
+    trained_modelscc = trained_models['trained_modelscc']
+    trained_modelsrr = trained_models['trained_modelsrr']
+    neural_weights = trained_models['neural_weights']
+
+    # Recreate the neural network model and set the loaded weights 
+    neural = Sequential([
+        Dense(64, activation='relu', input_shape=(2,)),
+        Dense(32, activation='relu'),
+        Dense(1, activation='linear')  # Output layer
+    ])
+    neural.compile(optimizer='adam', loss='mse', metrics=['mae'])
+    neural.set_weights(neural_weights)
     file_path = os.path.abspath(os.path.join(current_dir, "..", "..","src", "data", "processed", "final_training_file_t20.csv"))
     df = pd.read_csv(file_path, index_col=False)
 
@@ -283,7 +300,7 @@ def generate_predictions_t20(train_start_date, train_end_date, test_start_date, 
                'avg_fantasy_score_5', 'avg_fantasy_score_10', 'avg_fantasy_score_15',
                'avg_fantasy_score_20', 'rolling_ducks', 'rolling_maidens', 'gender',
                'α_batsmen_score', 'α_bowler_score', 'batsman_rating', 'bowler_rating',
-               'fantasy_score_total', 'longterm_total_matches_of_type', 'avg_against_opposition', 'bowling_style']
+               'fantasy_score_total', 'longterm_total_matches_of_type', 'avg_against_opposition', 'bowling_style','selected']
 
     numeric_columns = ['batting_average_n1', 'strike_rate_n1', 'boundary_percentage_n1',
                        'batting_average_n2', 'strike_rate_n2', 'boundary_percentage_n2',
@@ -356,31 +373,60 @@ def generate_predictions_t20(train_start_date, train_end_date, test_start_date, 
 
     df[['batter', 'wicketkeeper', 'bowler', 'allrounder']] = encode_playing_role_vectorized_t20(df, 'playing_role')
 
-    df.drop('longterm_total_matches_of_type', axis=1, inplace=True)
+    df.drop(['longterm_total_matches_of_type','playing_role'], axis=1, inplace=True)
 
     df = preprocessdf_t20(df)
 
-    test = filter_by_date(df, test_start_date, test_end_date)
+    test_df= filter_by_date(df, test_start_date, test_end_date)
 
-    test.drop(['match_type'], axis=1, inplace=True)
+    # test.drop(['match_type'], axis=1, inplace=True)
 
     # with open(model_path, 'rb') as file:
     #     trained_models = pickle.load(file)
-    with open(combined_model_path, 'rb') as file:
-        combined_models = pickle.load(file)
+    # with open(combined_model_path, 'rb') as file:
+    #     combined_models = pickle.load(file)
+    # combined_model_path = os.path.abspath(os.path.join(current_dir, "..", "model_artifacts", f"Model_UI_{train_start}-{train_end}.pkl"))
 
-    trained_models = combined_models['t20']
+    # trained_models = combined_models['t20']
+    # test_df = test_df[columns]
+    test_df = preprocess_odi(test_df)
 
-    X_test = test[numeric_columns]
 
-    X_test.fillna(0, inplace=True)
 
-    predictions, _ = predictions_per_match_t20(trained_models, X_test, test)
+    x_test1 = test_df.drop(['fantasy_score_total', 'start_date', 'match_id', 'player_id','selected','match_type'], axis=1)
+    x_test2 = test_df.drop(['fantasy_score_total', 'start_date', 'match_id', 'player_id','match_type', 'selected'], axis=1)
+        
+    columns1 = x_test1.columns.to_list()
+    columns2 = x_test2.columns.to_list()
 
+
+    predictions_c, _ = predictions_per_match_c(trained_modelscc, columns1,x_test1, test_df)
+    predictions_r, _ = predictions_per_match_odi(trained_modelsrr,columns2, x_test2, test_df)
+    predictions=pd.merge(predictions_r,predictions_c,on=['match_id','player_id','fantasy_score_total'])
+    X_test_nn= predictions.drop(columns=['match_id', 'player_id', 'fantasy_score_total'])
+    predictions['my_predicted_score']=neural.predict(X_test_nn)
+    predictions['predicted_score'] = predictions['my_predicted_score'].rename('predicted_score')
+    predictions.drop(columns=["my_predicted_score","stacked_regression_model_predicted_score","stacked_classifier_model_predicted_score"],inplace=True)
     predictions = predictions[['predicted_score', 'match_id', 'player_id', 'fantasy_score_total']]
-
     output_file_path = os.path.abspath(os.path.join(current_dir, "..", "..","src", "data", "processed", "predictions_t20.csv"))
     predictions.to_csv(output_file_path, index=False)
+
+
+    # X_test = test[numeric_columns]
+
+    # X_test.fillna(0, inplace=True)
+
+    # predictions, _ = predictions_per_match_t20(trained_models, X_test, test)
+
+    # predictions = predictions[['predicted_score', 'match_id', 'player_id', 'fantasy_score_total']]
+
+    # output_file_path = os.path.abspath(os.path.join(current_dir, "..", "..","src", "data", "processed", "predictions_t20.csv"))
+    # predictions.to_csv(output_file_path, index=False)
+
+
+def preprocess_test(X):
+    X=X.fillna(0)
+    return X
 
 def generate_predictions_test(train_start_date, train_end_date,test_start_date, test_end_date):
     train_start = train_start_date.replace('-', '_')
@@ -393,6 +439,23 @@ def generate_predictions_test(train_start_date, train_end_date,test_start_date, 
     with open(combined_model_path, 'rb') as file:
         combined_models = pickle.load(file)
     trained_models = combined_models['test']
+    
+    trained_modelscc = trained_models['trained_modelscc']
+    trained_modelsrr = trained_models['trained_modelsrr']
+    neural_weights = trained_models['neural_weights']
+
+    # Recreate the neural network model and set the loaded weights 
+    neural = Sequential([
+        Dense(64, activation='relu', input_shape=(2,)),
+        Dense(32, activation='relu'),
+        Dense(1, activation='linear')  # Output layer
+    ])
+    neural.compile(optimizer='adam', loss='mse', metrics=['mae'])
+    neural.set_weights(neural_weights)
+    # combined_model_path = os.path.abspath(os.path.join(current_dir, "..", "model_artifacts", f"Model_UI_{train_start}-{train_end}.pkl"))
+    # with open(combined_model_path, 'rb') as file:
+    #     combined_models = pickle.load(file)
+    # trained_models = combined_models['test']
     
     file_path = os.path.abspath(os.path.join(current_dir, "..", "..","src", "data", "processed", "final_training_file_test.csv"))
     df = pd.read_csv(file_path, index_col=False)
@@ -407,14 +470,39 @@ def generate_predictions_test(train_start_date, train_end_date,test_start_date, 
             'avg_fantasy_score_5', 'avg_fantasy_score_12', 'avg_fantasy_score_15',
             'avg_fantasy_score_25', 'α_bowler_score_n3', 'order_seen', 'bowling_style',
             'gini_coefficient', 'batter', 'wicketkeeper', 'bowler', 'allrounder',
-            'batting_style_Left hand Bat', 'start_date', 'fantasy_score_total', 'match_id', 'player_id']
-    df = df[columns]
+            'batting_style_Left hand Bat', 'start_date', 'fantasy_score_total', 'match_id', 'player_id','selected']
+    # df=df[columns]
     test_df = filter_by_date(df, test_start_date, test_end_date)
-    x_test = test_df.drop(['fantasy_score_total', 'start_date', 'match_id', 'player_id'], axis=1)
-    predictions = predictions_per_match_test(trained_models, x_test, test_df)
+    test_df = test_df[columns]
+    test_df = preprocess_test(test_df)
 
+
+
+    x_test1 = test_df.drop(['fantasy_score_total', 'start_date', 'match_id', 'player_id','selected'], axis=1)
+    x_test2 = test_df.drop(['fantasy_score_total', 'start_date', 'match_id', 'player_id', 'selected'], axis=1)
+        
+    columns1 = x_test1.columns.to_list()
+    columns2 = x_test2.columns.to_list()
+
+
+    predictions_c, _ = predictions_per_match_c(trained_modelscc, columns1,x_test1, test_df)
+    predictions_r, _ = predictions_per_match_odi(trained_modelsrr,columns2, x_test2, test_df)
+    predictions=pd.merge(predictions_r,predictions_c,on=['match_id','player_id','fantasy_score_total'])
+    X_test_nn= predictions.drop(columns=['match_id', 'player_id', 'fantasy_score_total'])
+    predictions['my_predicted_score']=neural.predict(X_test_nn)
+    predictions['predicted_score'] = predictions['my_predicted_score'].rename('predicted_score')
+    predictions.drop(columns=["my_predicted_score","stacked_regression_model_predicted_score","stacked_classifier_model_predicted_score"],inplace=True)
+    predictions = predictions[['predicted_score', 'match_id', 'player_id', 'fantasy_score_total']]
     output_file_path = os.path.abspath(os.path.join(current_dir, "..", "..","src", "data", "processed", "predictions_test.csv"))
     predictions.to_csv(output_file_path, index=False)
+    
+    # df = df[columns]
+    # test_df = filter_by_date(df, test_start_date, test_end_date)
+    # x_test = test_df.drop(['fantasy_score_total', 'start_date', 'match_id', 'player_id'], axis=1)
+    # predictions = predictions_per_match_test(trained_models, x_test, test_df)
+
+    # output_file_path = os.path.abspath(os.path.join(current_dir, "..", "..","src", "data", "processed", "predictions_test.csv"))
+    # predictions.to_csv(output_file_path, index=False)
 
 def generate_predictions_odi(train_start_date, train_end_date,test_start_date, test_end_date):
     train_start = train_start_date.replace('-', '_')
@@ -434,7 +522,7 @@ def generate_predictions_odi(train_start_date, train_end_date,test_start_date, t
 
     # Recreate the neural network model and set the loaded weights 
     neural = Sequential([
-        Dense(64, activation='relu', input_shape=(6,)),
+        Dense(64, activation='relu', input_shape=(2,)),
         Dense(32, activation='relu'),
         Dense(1, activation='linear')  # Output layer
     ])
@@ -509,7 +597,7 @@ def generate_predictions_odi(train_start_date, train_end_date,test_start_date, t
     X_test_nn= predictions.drop(columns=['match_id', 'player_id', 'fantasy_score_total'])
     predictions['my_predicted_score']=neural.predict(X_test_nn)
     predictions['predicted_score'] = predictions['my_predicted_score'].rename('predicted_score')
-    predictions.drop(columns=["my_predicted_score","xgboost regressor_predicted_score","linear regression_predicted_score","Catboost regressor_predicted_score","xgboost classification_predicted_score","logistic regression_predicted_score","Catboost classification_predicted_score"],inplace=True)
+    predictions.drop(columns=["my_predicted_score","stacked_regression_model_predicted_score","stacked_classifier_model_predicted_score"],inplace=True)
     output_file_path = os.path.abspath(os.path.join(current_dir, "..", "..","src", "data", "processed", "predictions_odi.csv"))
     predictions = predictions[['predicted_score', 'match_id', 'player_id', 'fantasy_score_total']]
     predictions.to_csv(output_file_path, index=False)
@@ -519,4 +607,4 @@ def main_generate_predictions(train_start, train_end, test_start, test_end):
     generate_predictions_odi(train_start, train_end, test_start, test_end)
     generate_predictions_test(train_start, train_end, test_start, test_end)
 
-# main_generate_predictions('2000-01-01', '2022-01-01', '2023-01-01', '2024-12-31')
+# main_generate_predictions('2020-01-01', '2022-01-01', '2023-01-01', '2024-12-31')

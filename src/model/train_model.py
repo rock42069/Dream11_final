@@ -5,6 +5,8 @@ import numpy as np
 from sklearn.linear_model import LinearRegression, Ridge, Lasso, ElasticNet, LogisticRegression
 from sklearn.ensemble import StackingRegressor
 from sklearn.neural_network import MLPRegressor
+from lightgbm import LGBMClassifier
+from sklearn.ensemble import StackingClassifier
 from lightgbm import LGBMRegressor
 from catboost import CatBoostRegressor, CatBoostClassifier
 from xgboost import XGBRegressor, XGBClassifier
@@ -25,31 +27,34 @@ def drop_zero_dominant_rows_odi(df, threshold=0.9):
 
     return df_cleaned
 
-def train_models_regression(X_train, y_train):
-    models = {
-    "xgboost regressor": XGBRegressor(random_state=42),
-    "linear regression":LinearRegression(),
-    "Catboost regressor":CatBoostRegressor(random_state=42,verbose=False),
-}
-    trained_models = {}
+def train_stacked_model_regression(X_train, y_train):
+    # Define base models
+    base_models = [
+        ("linear_regression", LinearRegression()),
+        ("catboost", CatBoostRegressor(verbose=0, random_state=42)),
+        ("xgboost regressor", XGBRegressor(random_state=42))
+    ]
 
-    # Reshape X_train and y_train to ensure proper dimensions for each model
-    if len(X_train.shape) == 1:  # If X_train is a 1D array, convert it to 2D
+    # Define meta-model
+    meta_model = LGBMRegressor(random_state=42)
+
+    # Define stacked model
+    stacked_model = StackingRegressor(estimators=base_models, final_estimator=meta_model)
+
+    # Ensure proper dimensions for X_train and y_train
+    if len(X_train.shape) == 1:
         X_train = X_train.reshape(-1, 1)
-
-    if len(y_train.shape) == 1:  # If y_train is a 1D array, no reshaping needed
-        pass
-    elif len(y_train.shape) == 2:  # If y_train is 2D, flatten it
+    if len(y_train.shape) == 2:
         y_train = y_train.ravel()
 
-    for name, model in models.items():
-        # Train the model
-        print(f"Training {name}...")
-        model.fit(X_train, y_train)
-        trained_models[name] = {
-            'model': model,
-        }
-        
+    # Train the model
+    trained_models = {}
+    print("Training stacked_model...")
+    stacked_model.fit(X_train, y_train)
+    trained_models["stacked_regression_model"] = {
+        'model': stacked_model,
+    }
+
     return trained_models
 
 def preprocess_odi(X):
@@ -66,36 +71,43 @@ def preprocess_odi(X):
     return X
 
 
-def train_models_classification(X_train, y_train):
-    # Define models
-    models = {
-        "xgboost classification": XGBClassifier(random_state=42),
-        "logistic regression": LogisticRegression(),
-        "Catboost classification": CatBoostClassifier(random_state=42, verbose=False),
-    }
-    
-    trained_models = {}
-    if isinstance(X_train, pd.Series):
-        X_train = X_train.to_frame()  
-    
-    if isinstance(y_train, pd.DataFrame):
-        y_train = y_train.squeeze() 
+def train_stacked_model_classification(X_train, y_train):
+    # Define base models
+    base_models = [
+        ("logistic_regression", LogisticRegression()),
+        ("catboost", CatBoostClassifier(random_state=42, verbose=False)),
+        ("xgboost", XGBClassifier(random_state=42))
+    ]
 
-    # Check for NaN or Infinite values
+    # Define meta-model
+    meta_model = LGBMClassifier(random_state=42)
+
+    # Define stacked model
+    stacked_model = StackingClassifier(estimators=base_models, final_estimator=meta_model)
+
+    # Convert Series to DataFrame if needed
+    if isinstance(X_train, pd.Series):
+        X_train = X_train.to_frame()
+    
+    # Convert DataFrame to Series if needed
+    if isinstance(y_train, pd.DataFrame):
+        y_train = y_train.squeeze()
+
+    # Check for NaN or infinite values
     if X_train.isnull().any().any() or not np.isfinite(X_train).all().all():
         raise ValueError("X_train contains NaN or infinite values.")
     if y_train.isnull().any() or not np.isfinite(y_train).all():
         raise ValueError("y_train contains NaN or infinite values.")
-    
-    # Train each model
-    for name, model in models.items():
-        try:
-            print(f"Training {name} with X_train shape {X_train.shape} and y_train shape {y_train.shape}...")
-            model.fit(X_train, y_train)
-            trained_models[name] = {'model': model}
-        except Exception as e:
-            print(f"Error training {name}: {e}")
-    
+
+    # Train the model
+    trained_models = {}
+    try:
+        print(f"Training stacked_model with X_train shape {X_train.shape} and y_train shape {y_train.shape}...")
+        stacked_model.fit(X_train, y_train)
+        trained_models["stacked_classifier_model"] = {'model': stacked_model}
+    except Exception as e:
+        print(f"Error training stacked_model: {e}")
+
     return trained_models
 
 
@@ -249,8 +261,8 @@ def iterative_training(X_train, y, X_trainc, yc, test):
 
 
         # Train regression and classification models on cumulative data
-        trained_modelsr = train_models_regression(X_train_combined, y_combined)
-        trained_modelsc = train_models_classification(X_trainc_combined, yc_combined)
+        trained_modelsr = train_stacked_model_regression(X_train_combined, y_combined)
+        trained_modelsc = train_stacked_model_classification(X_trainc_combined, yc_combined)
 
         # Get predictions using the prediction batch
         if(prediction_end-prediction_start>0):
@@ -345,7 +357,7 @@ def preproces_t20(X):
     X= one_hot_encode_t20(X,'gender')
     # X=X.fillna(0)
     #drop categorical columns
-    cols=['player_id','bowling_average_n1',
+    cols=['bowling_average_n1',
        'bowling_strike_rate_n1', 'bowling_average_n2',
        'bowling_strike_rate_n2', 'bowling_average_n3',
        'bowling_strike_rate_n3','α_bowler_score']
@@ -446,6 +458,11 @@ def train_models_t20(X_train, y_train):
             print(f"Error training {name}: {e}")
     
     return trained_models
+def preprocess_t20(X):
+    X=X.fillna(0)
+    cols=['player_id','start_date','match_id','match_type']
+    X=X.drop(cols,axis=1)
+    return X
 
  
 def train_and_save_model_t20(train_start_date, train_end_date):
@@ -477,7 +494,7 @@ def train_and_save_model_t20(train_start_date, train_end_date):
         'avg_fantasy_score_5', 'avg_fantasy_score_10', 'avg_fantasy_score_15',
         'avg_fantasy_score_20', 'rolling_ducks', 'rolling_maidens','gender',
         'α_batsmen_score', 'α_bowler_score', 'batsman_rating', 'bowler_rating',
-        'fantasy_score_total','longterm_total_matches_of_type','avg_against_opposition','bowling_style']
+        'fantasy_score_total','longterm_total_matches_of_type','avg_against_opposition','bowling_style','selected']
     # columns=['start_date','player_id', 'match_id', 'match_type','playing_role',
     #     'batting_average_n1', 'strike_rate_n1', 'boundary_percentage_n1',
     #     'batting_average_n2', 'strike_rate_n2', 'boundary_percentage_n2',
@@ -503,17 +520,56 @@ def train_and_save_model_t20(train_start_date, train_end_date):
     df = df[columns]
     df = preproces_t20(df)
     df[['batter', 'wicketkeeper', 'bowler', 'allrounder']] = encode_playing_role_vectorized_t20(df, 'playing_role')
-    df.drop('longterm_total_matches_of_type', axis=1, inplace=True)
+    df.drop(['longterm_total_matches_of_type','playing_role'], axis=1, inplace=True)
     df = preprocessdf_t20(df)
-    train = filter_by_date(df, train_start_date, train_end_date)
-    y_train = train['fantasy_score_total']
-    train.drop(['match_type','match_id'], axis=1, inplace=True)
-    train.fillna(0, inplace=True)
-    numeric_X_train = train.select_dtypes(include=[np.number])
-    trained_models = train_models_t20(numeric_X_train.drop('fantasy_score_total', axis=1), y_train)
-    with open(model_output_path, 'wb') as file:
-        pickle.dump(trained_models, file)
+    df = filter_by_date(df, train_start_date, train_end_date)
 
+    y_train = df['fantasy_score_total']
+    x_train = df.drop(['selected','fantasy_score_total'], axis=1)
+
+    x_train = preprocess_t20(x_train)
+
+    y_trainc = df['selected']
+    x_trainc = df.drop(['fantasy_score_total', 'selected'], axis=1)
+
+    x_trainc = preprocess_t20(x_trainc)
+
+    shuffled_indices = np.random.permutation(df.index)
+
+    # Shuffle each DataFrame/Series using the shuffled indices
+    X_train = x_train.loc[shuffled_indices].reset_index(drop=True)
+    y_train = y_train.loc[shuffled_indices].reset_index(drop=True)
+    X_trainc = x_trainc.loc[shuffled_indices].reset_index(drop=True)
+    y_trainc = y_trainc.loc[shuffled_indices].reset_index(drop=True)
+    df = df.loc[shuffled_indices].reset_index(drop=True)
+
+    trained_modelsrr, trained_modelscc, combined = iterative_training(X_train, y_train, X_trainc, y_trainc, df)
+
+    Xn = combined.drop(['match_id', 'player_id', 'fantasy_score_total'], axis=1)
+    yn = combined['fantasy_score_total']
+
+    neural = train_neural_network(Xn, yn)
+
+    with open(model_output_path, 'wb') as file:
+        pickle.dump({
+            'trained_modelscc': trained_modelscc,
+            'trained_modelsrr': trained_modelsrr,
+            'neural_weights': neural.get_weights()
+        }, file)
+
+    # y_train = train['fantasy_score_total']
+    # train.drop(['match_type','match_id'], axis=1, inplace=True)
+    # train.fillna(0, inplace=True)
+    # numeric_X_train = train.select_dtypes(include=[np.number])
+    # trained_models = train_models_t20(numeric_X_train.drop('fantasy_score_total', axis=1), y_train)
+    # with open(model_output_path, 'wb') as file:
+    #     pickle.dump(trained_models, file)
+
+def preprocess_test(X):
+    X=X.fillna(0)
+    cols=['player_id','start_date','match_id']
+    X=X.drop(cols,axis=1)
+    return X
 def train_and_save_model_test(train_start_date, train_end_date):
 
     file_path = os.path.abspath(os.path.join(current_dir, "..", "..","src", "data", "processed", "final_training_file_test.csv")) # all features
@@ -533,7 +589,7 @@ def train_and_save_model_test(train_start_date, train_end_date):
                 'avg_fantasy_score_5', 'avg_fantasy_score_12', 'avg_fantasy_score_15',
                 'avg_fantasy_score_25', 'α_bowler_score_n3', 'order_seen', 'bowling_style',
                 'gini_coefficient', 'batter', 'wicketkeeper', 'bowler', 'allrounder',
-                'batting_style_Left hand Bat', 'start_date', 'fantasy_score_total', 'match_id', 'player_id']
+                'batting_style_Left hand Bat', 'start_date', 'fantasy_score_total', 'match_id', 'player_id','selected']
 
     df = df[columns]
 
@@ -542,11 +598,40 @@ def train_and_save_model_test(train_start_date, train_end_date):
     df = filter_by_date(df, train_start_date, train_end_date)
 
     y_train = df['fantasy_score_total']
-    X_train = df.drop(['fantasy_score_total', 'start_date'], axis=1)
-    X_train.drop(['match_id', 'player_id'], axis=1, inplace=True)
-    trained_models = train_models_test(X_train, y_train)
+    x_train = df.drop(['selected','fantasy_score_total'], axis=1)
 
-    pickle.dump(trained_models, open(output_model_path, 'wb'))
+    x_train = preprocess_test(x_train)
+
+    y_trainc = df['selected']
+    x_trainc = df.drop(['fantasy_score_total', 'selected'], axis=1)
+
+    x_trainc = preprocess_test(x_trainc)
+
+    shuffled_indices = np.random.permutation(df.index)
+
+    # Shuffle each DataFrame/Series using the shuffled indices
+    X_train = x_train.loc[shuffled_indices].reset_index(drop=True)
+    y_train = y_train.loc[shuffled_indices].reset_index(drop=True)
+    X_trainc = x_trainc.loc[shuffled_indices].reset_index(drop=True)
+    y_trainc = y_trainc.loc[shuffled_indices].reset_index(drop=True)
+    df = df.loc[shuffled_indices].reset_index(drop=True)
+
+    trained_modelsrr, trained_modelscc, combined = iterative_training(X_train, y_train, X_trainc, y_trainc, df)
+
+    Xn = combined.drop(['match_id', 'player_id', 'fantasy_score_total'], axis=1)
+    yn = combined['fantasy_score_total']
+
+    neural = train_neural_network(Xn, yn)
+
+    with open(output_model_path, 'wb') as file:
+        pickle.dump({
+            'trained_modelscc': trained_modelscc,
+            'trained_modelsrr': trained_modelsrr,
+            'neural_weights': neural.get_weights()
+        }, file)
+    # trained_models = train_models_test(X_train, y_train)
+
+    # pickle.dump(trained_models, open(output_model_path, 'wb'))
 
 def train_and_save_model_odi(train_start_date, train_end_date):
     cols = [
@@ -673,4 +758,4 @@ def main_train_and_save(start,end):
     train_and_save_model_t20(start, end)
     model_merge(start, end)
 
-# main_train_and_save('2000-01-01', '2022-01-01')
+# main_train_and_save('2020-01-01', '2022-01-01')
