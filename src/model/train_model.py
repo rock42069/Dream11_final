@@ -478,28 +478,7 @@ def train_and_save_model_t20(train_start_date, train_end_date):
         'avg_fantasy_score_20', 'rolling_ducks', 'rolling_maidens','gender',
         'α_batsmen_score', 'α_bowler_score', 'batsman_rating', 'bowler_rating',
         'fantasy_score_total','longterm_total_matches_of_type','avg_against_opposition','bowling_style']
-    # columns=['start_date','player_id', 'match_id', 'match_type','playing_role',
-    #     'batting_average_n1', 'strike_rate_n1', 'boundary_percentage_n1',
-    #     'batting_average_n2', 'strike_rate_n2', 'boundary_percentage_n2',
-    #     'batting_average_n3', 'strike_rate_n3', 'boundary_percentage_n3',
-    #     'centuries_cumsum', 'half_centuries_cumsum', 'avg_runs_scored',
-    #     'avg_strike_rate', 'avg_half_centuries', 'avg_centuries',
-    #     'avg_rolling_ducks', 'strike_rotation_percentage',
-    #     'avg_strike_rotation_percentage', 'conversion_30_to_50',
-    #     'economy_rate_n1', 'economy_rate_n2', 'economy_rate_n3',
-    #     'wickets_in_n_matches', 'total_overs_throwed', 'bowling_average_n1',
-    #     'bowling_strike_rate_n1', 'bowling_average_n2',
-    #     'bowling_strike_rate_n2', 'bowling_average_n3',
-    #     'bowling_strike_rate_n3', 'CBR', 'CBR2', 'fielding_points',
-    #     'four_wicket_hauls_n', 'highest_runs', 'highest_wickets',
-    #     'order_seen_mode', 'longterm_avg_runs', 'longterm_var_runs',
-    #     'longterm_avg_strike_rate', 'longterm_avg_wickets_per_match',
-    #     'longterm_var_wickets_per_match', 'longterm_avg_economy_rate',
-    #     'longterm_total_matches_of_type', 'avg_fantasy_score_1',
-    #     'avg_fantasy_score_5', 'avg_fantasy_score_10', 'avg_fantasy_score_15',
-    #     'avg_fantasy_score_20', 'rolling_ducks', 'rolling_maidens','gender',
-    #     'α_batsmen_score', 'α_bowler_score', 'batsman_rating', 'bowler_rating',
-    #     'fantasy_score_total','longterm_total_matches_of_type','bowling_style']
+
     df = df[columns]
     df = preproces_t20(df)
     df[['batter', 'wicketkeeper', 'bowler', 'allrounder']] = encode_playing_role_vectorized_t20(df, 'playing_role')
@@ -573,27 +552,7 @@ def train_and_save_model_odi(train_start_date, train_end_date):
         'Pitch_Type_Bowling-Friendly', 'Pitch_Type_Neutral', 'ARPO_venue',
         'BSR_venue'
     ]
-    # cols= [
-    #    'player_id', 'match_id', 'match_type', 'start_date',
-    #    'batting_average_n1', 'strike_rate_n1', 'boundary_percentage_n1',
-    #    'batting_average_n2', 'strike_rate_n2', 'boundary_percentage_n2',
-    #    'batting_average_n3', 'strike_rate_n3', 'boundary_percentage_n3',
-    #    'centuries_cumsum', 'half_centuries_cumsum', 'avg_runs_scored',
-    #    'avg_strike_rate', 'avg_half_centuries', 'avg_centuries',
-    #    'avg_rolling_ducks', 'strike_rotation_percentage',
-    #    'avg_strike_rotation_percentage', 'conversion_30_to_50',
-    #    'economy_rate_n1', 'economy_rate_n2', 'economy_rate_n3',
-    #    'wickets_in_n_matches', 'total_overs_throwed', 'CBR', 'CBR2', 'fielding_points',
-    #    'four_wicket_hauls_n', 'highest_runs', 'highest_wickets',
-    #    'order_seen_mode', 'longterm_avg_runs', 'longterm_var_runs',
-    #    'longterm_avg_strike_rate', 'longterm_avg_wickets_per_match',
-    #    'longterm_var_wickets_per_match', 'longterm_avg_economy_rate',
-    #    'avg_fantasy_score_1', 'avg_fantasy_score_5', 'avg_fantasy_score_10', 'avg_fantasy_score_15',
-    #    'avg_fantasy_score_20', 'rolling_ducks', 'rolling_maidens',
-    #    'α_batsmen_score', 'batsman_rating', 'bowler_rating', 
-    #    'fantasy_score_total', 'bowling_style', 'selected', 
-    # 'gender_female', 'gender_male', 'dot_ball_percentage_n1', 'dot_ball_percentage_n2', 'dot_ball_percentage_n3', 'longterm_dot_ball_percentage', 'dot_ball_percentage', 'longterm_var_dot_ball_percentage',
-    #      'role_factor', 'odi_impact']
+
     train_start = train_start_date.replace("-", "_")
     train_end = train_end_date.replace("-", "_")
     model_output_path = os.path.abspath(os.path.join(current_dir, "..", "model_artifacts" , f"Model_UI_{train_start}-{train_end}_odi.pkl"))
@@ -672,5 +631,3 @@ def main_train_and_save(start,end):
     train_and_save_model_test(start, end)
     train_and_save_model_t20(start, end)
     model_merge(start, end)
-
-# main_train_and_save('2000-01-01', '2022-01-01')
